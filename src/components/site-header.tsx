@@ -47,7 +47,6 @@ const ACCOUNT_LINKS = [
   ["/mes-annonces", "Mes annonces"],
   ["/rendez-vous", "Rendez-vous"],
   ["/favoris", "Favoris"],
-  ["/agent", "Espace agent"],
 ] as const;
 
 async function UserNav() {
@@ -65,6 +64,7 @@ async function UserNav() {
       .eq("status", "en_attente"),
   ]);
   const isAdmin = profile?.role === "admin";
+  const isAgent = profile?.role === "agent";
   const pending = count ?? 0;
 
   return (
@@ -92,11 +92,22 @@ async function UserNav() {
               )}
             </Link>
           ))}
-          {isAdmin && (
-            <Link href="/admin" className="block border-t border-line px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-sand-50">
-              Administration
-            </Link>
-          )}
+          {/* Chaque profil voit son propre espace */}
+          <div className="border-t border-line pt-1.5">
+            {isAdmin ? (
+              <Link href="/admin" className="block px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-sand-50">
+                Administration
+              </Link>
+            ) : isAgent ? (
+              <Link href="/agent" className="block px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-sand-50">
+                Espace agent
+              </Link>
+            ) : (
+              <Link href="/agent" className="block px-4 py-2 text-sm text-gold-600 hover:bg-sand-50">
+                Devenir agent
+              </Link>
+            )}
+          </div>
           <Link href="/agents" className="block px-4 py-2 text-sm text-ink hover:bg-sand-50 md:hidden">
             Annuaire des agents
           </Link>
