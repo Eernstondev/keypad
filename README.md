@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KayAyiti
 
-## Getting Started
+Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Contact direct par WhatsApp, badge « Vérifié », signalement des arnaques.
 
-First, run the development server:
+**Stack** : Next.js 16 (App Router, Cache Components), Supabase (Postgres + PostGIS, Auth, Storage, RLS), Tailwind CSS 4, Leaflet + OpenStreetMap.
+
+## 1. Configurer Supabase (une seule fois)
+
+1. **SQL Editor** → coller tout le contenu de `supabase/schema.sql` → Run.
+2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
+   ```html
+   <h2>Votre code KayAyiti</h2>
+   <p>Entrez ce code pour vous connecter : <strong>{{ .Token }}</strong></p>
+   ```
+3. **Authentication → URL Configuration** : *Site URL* = l'URL du site (ex. `http://localhost:3000`, puis le domaine de production).
+4. **Authentication → SMTP** (production) : brancher un vrai fournisseur d'e-mails (Resend, Brevo…). Le service intégré de Supabase est limité à quelques e-mails par heure.
+
+## 2. Lancer en local
 
 ```bash
+npm install
+cp .env.example .env.local   # puis renseigner l'URL et la clé anon du projet
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrir http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 3. Devenir administrateur
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Connecte-toi une première fois sur le site, puis dans le SQL Editor :
 
-## Learn More
+```sql
+update public.profiles set role = 'admin'
+where id = (select id from auth.users where email = 'ton-email@exemple.com');
+```
 
-To learn more about Next.js, take a look at the following resources:
+La page `/admin` permet ensuite de traiter les signalements et d'attribuer le badge « Vérifié ».
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 4. Déployer (Vercel)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Pousser le projet sur GitHub, puis l'importer dans Vercel.
+2. Ajouter les variables `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. Mettre le domaine de production comme *Site URL* dans Supabase.
 
-## Deploy on Vercel
+## Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+supabase/schema.sql          Tables, RLS, stockage, fonctions
+src/proxy.ts                 Rafraîchit la session, protège /publier, /mes-annonces, /admin
+src/lib/listings.ts          Types, libellés, formatage (prix, WhatsApp)
+src/lib/queries.ts           Lectures publiques mises en cache (recherche, détail)
+src/lib/supabase/            Clients Supabase (serveur / navigateur)
+src/app/actions.ts           Server actions (signalement, archivage, suppression, admin)
+src/app/page.tsx             Accueil : recherche, résultats, carte
+src/app/annonces/[id]/       Détail d'une annonce + signalement
+src/app/publier/             Formulaire de publication (photos compressées côté navigateur)
+src/app/mes-annonces/        Gestion de ses annonces
+src/app/admin/               Modération
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Sécurité
+
+- Toutes les règles d'accès sont dans la base (RLS + droits par colonne) : un utilisateur ne peut ni modifier l'annonce d'un autre, ni s'attribuer le badge « Vérifié », ni changer son rôle.
+- Les photos sont rangées dans `property-media/<user_id>/…` ; chacun n'écrit que dans son dossier.
+- La clé `anon` est publique par conception ; ne jamais exposer la clé `service_role`.
