@@ -6,7 +6,9 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
 
 ## 1. Configurer Supabase (une seule fois)
 
-1. **SQL Editor** → coller tout le contenu de `supabase/schema.sql` → Run.
+1. **SQL Editor** → exécuter, dans l'ordre, chaque fichier en entier :
+   - `supabase/schema.sql`
+   - `supabase/migrations/002_modifier_expiration.sql` (expiration des annonces après 60 jours)
 2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
    ```html
    <h2>Votre code KayAyiti</h2>
