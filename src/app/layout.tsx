@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
+import { FavoritesProvider } from "@/components/favorites";
 import { SiteHeader } from "@/components/site-header";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -10,6 +12,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "KayAyiti — Maisons, appartements et terrains en Haïti",
     template: "%s · KayAyiti",
@@ -26,8 +29,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${jakarta.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
+        <FavoritesProvider>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+        </FavoritesProvider>
         <footer className="border-t border-line bg-white">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
             <nav className="flex flex-wrap gap-x-4 gap-y-1">

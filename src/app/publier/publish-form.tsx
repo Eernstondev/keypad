@@ -133,7 +133,12 @@ export function PublishForm({ userId, initial }: { userId: string; initial?: Pro
 
     if (saveError || !property) {
       setStatus(null);
-      return setError("Annonce refusée : vérifiez les champs (titre de 10 caractères minimum, numéro valide…).");
+      // Message de la base (ex. limite de 5 annonces par jour) sinon message générique
+      return setError(
+        saveError?.message.startsWith("Limite atteinte")
+          ? saveError.message
+          : "Annonce refusée : vérifiez les champs (titre de 10 caractères minimum, numéro valide…).",
+      );
     }
 
     // Les nouvelles photos se placent après les photos conservées

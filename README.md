@@ -12,6 +12,7 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
    - `supabase/migrations/003_annonces_demo.sql` (8 annonces de démonstration ; se connecter une fois avant).
      Pour les retirer : `delete from public.properties where is_demo;`
    - `supabase/migrations/004_prix_comparable.sql` (tri par prix entre HTG et USD, taux indicatif 131)
+   - `supabase/migrations/005_favoris_stats_moderation.sql` (favoris, vues et clics WhatsApp, limite de 5 annonces par 24 h, archivage admin)
 2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
    ```html
    <h2>Votre code KayAyiti</h2>
@@ -44,7 +45,7 @@ La page `/admin` permet ensuite de traiter les signalements et d'attribuer le ba
 ## 4. Déployer (Vercel)
 
 1. Pousser le projet sur GitHub, puis l'importer dans Vercel.
-2. Ajouter les variables `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. Ajouter les variables `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` et `NEXT_PUBLIC_SITE_URL` (ex. `https://kayayiti.com`, pour le sitemap et les aperçus de liens).
 3. Mettre le domaine de production comme *Site URL* dans Supabase.
 
 ## Structure

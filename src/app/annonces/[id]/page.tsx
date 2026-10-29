@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { FavoriteButton } from "@/components/favorites";
 import { PropertyMap } from "@/components/map";
+import { PropertyCard } from "@/components/property-card";
 import { VerifiedBadge } from "@/components/verified-badge";
 import {
   PROPERTY_TYPES,
@@ -12,8 +14,10 @@ import {
   locationLabel,
   mediaUrl,
   whatsappLink,
+  type Property,
 } from "@/lib/listings";
-import { getProperty } from "@/lib/queries";
+import { getProperty, getSimilarProperties } from "@/lib/queries";
+import { ShareButton, ViewTracker, WhatsAppButton } from "./listing-actions";
 import { ReportForm } from "./report-form";
 
 export async function generateMetadata({ params }: PageProps<"/annonces/[id]">): Promise<Metadata> {
@@ -87,11 +91,17 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-navy-100 px-2.5 py-1 text-xs font-semibold text-navy-900">
-              {TRANSACTION_TYPES[p.transaction_type]}
-            </span>
-            {p.verified && <VerifiedBadge />}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-navy-100 px-2.5 py-1 text-xs font-semibold text-navy-900">
+                {TRANSACTION_TYPES[p.transaction_type]}
+              </span>
+              {p.verified && <VerifiedBadge />}
+            </div>
+            <div className="flex items-center gap-2">
+              <ShareButton title={p.title} />
+              <FavoriteButton propertyId={p.id} className="border border-line" />
+            </div>
           </div>
           <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-navy-900 sm:text-3xl">{p.title}</h1>
           <p className="mt-2 text-muted">{locationLabel(p)}</p>
@@ -131,14 +141,7 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
                 Annonce fictive, pas de contact
               </p>
             ) : (
-              <a
-                href={whatsappLink(p.whatsapp, message)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 font-semibold text-white transition hover:brightness-95"
-              >
-                Contacter sur WhatsApp
-              </a>
+              <WhatsAppButton propertyId={p.id} href={whatsappLink(p.whatsapp, message)} />
             )}
           </div>
 
@@ -154,6 +157,25 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
           <ReportForm propertyId={p.id} />
         </aside>
       </div>
+
+      {!p.is_demo && <ViewTracker propertyId={p.id} />}
+      <Similar property={p} />
     </article>
+  );
+}
+
+async function Similar({ property }: { property: Property }) {
+  const items = await getSimilarProperties(property);
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mt-14 border-t border-line pt-10">
+      <h2 className="text-xl font-bold text-navy-900">Annonces similaires</h2>
+      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map((p) => (
+          <PropertyCard key={p.id} property={p} />
+        ))}
+      </div>
+    </section>
   );
 }

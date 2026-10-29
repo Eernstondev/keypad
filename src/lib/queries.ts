@@ -125,6 +125,32 @@ export async function searchProperties(f: SearchFilters) {
   return { items: (data ?? []) as Property[], total: count ?? 0 };
 }
 
+// Même type de transaction, même commune d'abord, puis même département
+export async function getSimilarProperties(p: Pick<Property, "id" | "transaction_type" | "commune" | "department">) {
+  "use cache";
+  cacheTag("properties");
+  cacheLife("minutes");
+
+  const LIMIT = 4;
+  const base = () =>
+    publicClient()
+      .from("properties")
+      .select(PROPERTY_COLUMNS)
+      .eq("status", "publie")
+      .eq("transaction_type", p.transaction_type)
+      .neq("id", p.id)
+      .order("verified", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(LIMIT);
+
+  const { data: sameCommune } = await base().eq("commune", p.commune);
+  const items = (sameCommune ?? []) as Property[];
+  if (items.length >= LIMIT) return items;
+
+  const { data: sameDepartment } = await base().eq("department", p.department).neq("commune", p.commune);
+  return [...items, ...((sameDepartment ?? []) as Property[])].slice(0, LIMIT);
+}
+
 export async function getProperty(id: string) {
   "use cache";
   cacheTag("properties", `property:${id}`);

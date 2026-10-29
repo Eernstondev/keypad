@@ -90,3 +90,11 @@ export async function setReportStatus(reportId: string, status: "traite" | "reje
   if (error) throw new Error("Action réservée aux administrateurs.");
   refresh();
 }
+
+// Modération : archiver ou remettre en ligne l'annonce de n'importe qui (admin uniquement, vérifié en base)
+export async function adminSetListingStatus(propertyId: string, status: "publie" | "archive") {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("admin_set_listing_status", { p_property_id: propertyId, p_status: status });
+  if (error) throw new Error("Action réservée aux administrateurs.");
+  invalidate(propertyId);
+}

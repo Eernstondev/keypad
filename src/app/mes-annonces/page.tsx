@@ -37,12 +37,12 @@ async function MyListings() {
 
   const { data, error } = await supabase
     .from("properties")
-    .select(`${PROPERTY_COLUMNS}, expires_at`)
+    .select(`${PROPERTY_COLUMNS}, expires_at, view_count, whatsapp_clicks`)
     .eq("owner_id", auth.claims.sub)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error("Impossible de charger vos annonces.");
-  const listings = (data ?? []) as (Property & { expires_at: string })[];
+  const listings = (data ?? []) as (Property & { expires_at: string; view_count: number; whatsapp_clicks: number })[];
 
   if (listings.length === 0) {
     return (
@@ -78,6 +78,11 @@ async function MyListings() {
               <p className="text-sm text-muted">{formatPrice(p)} · {locationLabel(p)}</p>
               {!archived && (
                 <p className="mt-0.5 text-xs text-muted">En ligne jusqu&apos;au {expiryFormat.format(new Date(p.expires_at))}</p>
+              )}
+              {!p.is_demo && (
+                <p className="mt-1.5 text-xs font-medium text-navy-700">
+                  {p.view_count} vue{p.view_count > 1 ? "s" : ""} · {p.whatsapp_clicks} contact{p.whatsapp_clicks > 1 ? "s" : ""} WhatsApp
+                </p>
               )}
             </div>
 
