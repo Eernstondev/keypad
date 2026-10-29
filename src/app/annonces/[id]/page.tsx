@@ -52,6 +52,11 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
 
   return (
     <article className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+      {p.is_demo && (
+        <p className="mb-4 rounded-xl bg-ink px-4 py-3 text-sm text-white">
+          Annonce de démonstration : ce bien n&apos;existe pas. Elle montre à quoi ressemble une annonce sur KayAyiti.
+        </p>
+      )}
       {photos.length > 0 ? (
         <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           {photos.map((m, i) => (
@@ -115,14 +120,20 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-line bg-white p-5">
             <p className="text-2xl font-extrabold text-navy-900">{formatPrice(p)}</p>
-            <a
-              href={whatsappLink(p.whatsapp, message)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 font-semibold text-white transition hover:brightness-95"
-            >
-              Contacter sur WhatsApp
-            </a>
+            {p.is_demo ? (
+              <p className="mt-4 rounded-xl bg-sand-100 px-5 py-3 text-center text-sm font-medium text-muted">
+                Annonce fictive, pas de contact
+              </p>
+            ) : (
+              <a
+                href={whatsappLink(p.whatsapp, message)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-5 py-3 font-semibold text-white transition hover:brightness-95"
+              >
+                Contacter sur WhatsApp
+              </a>
+            )}
           </div>
 
           <div className="rounded-2xl border border-gold-500/40 bg-gold-100/60 p-5 text-sm">

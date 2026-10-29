@@ -31,9 +31,14 @@ export function PropertyCard({ property: p }: { property: Property }) {
         ) : (
           <div className="grid h-full place-items-center text-sm text-muted">Pas de photo</div>
         )}
-        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-navy-900">
-          {TRANSACTION_TYPES[p.transaction_type]}
-        </span>
+        <div className="absolute left-3 top-3 flex gap-1.5">
+          <span className="rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-navy-900">
+            {TRANSACTION_TYPES[p.transaction_type]}
+          </span>
+          {p.is_demo && (
+            <span className="rounded-full bg-ink/80 px-2.5 py-1 text-xs font-semibold text-white">Démo</span>
+          )}
+        </div>
         {p.verified && <VerifiedBadge className="absolute right-3 top-3" />}
       </div>
 

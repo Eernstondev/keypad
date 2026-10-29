@@ -27,6 +27,7 @@ export type Property = {
   whatsapp: string;
   status: "publie" | "archive";
   verified: boolean;
+  is_demo: boolean;
   created_at: string;
   property_media: PropertyMedia[];
 };
@@ -69,7 +70,9 @@ export type ReportReason = keyof typeof REPORT_REASONS;
 
 export const MEDIA_BUCKET = "property-media";
 
+// Chemin dans le bucket, ou URL complète (photos des annonces de démo)
 export function mediaUrl(path: string) {
+  if (path.startsWith("https://")) return path;
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${MEDIA_BUCKET}/${path}`;
 }
 

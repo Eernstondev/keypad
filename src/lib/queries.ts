@@ -19,7 +19,7 @@ function publicClient() {
 }
 
 export const PROPERTY_COLUMNS =
-  "id, owner_id, title, description, property_type, transaction_type, price, currency, price_period, bedrooms, bathrooms, area_m2, department, commune, neighborhood, address_hint, lat, lng, whatsapp, status, verified, created_at, property_media(storage_path, position)";
+  "id, owner_id, title, description, property_type, transaction_type, price, currency, price_period, bedrooms, bathrooms, area_m2, department, commune, neighborhood, address_hint, lat, lng, whatsapp, status, verified, is_demo, created_at, property_media(storage_path, position)";
 
 export const PAGE_SIZE = 24;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
