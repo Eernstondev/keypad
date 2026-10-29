@@ -1,26 +1,62 @@
 @import "tailwindcss";
 
+/* Couleurs tirées du logo KayAyiti */
+@theme {
+  --color-navy-950: #081833;
+  --color-navy-900: #0c234d;
+  --color-navy-800: #153367;
+  --color-navy-700: #1e4280;
+  --color-navy-100: #e6ebf4;
+  --color-gold-600: #a9853a;
+  --color-gold-500: #c7a150;
+  --color-gold-100: #f6eedb;
+  --color-sand-50: #faf8f4;
+  --color-sand-100: #f2eee6;
+  --color-ink: #141a26;
+  --color-muted: #5d6474;
+  --color-line: #e5e1d8;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-sand-50);
+  color: var(--color-ink);
+}
+
+/* Marqueur de carte aux couleurs du logo */
+.ka-pin {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--color-navy-900);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.3), inset 0 0 0 4px var(--color-gold-500);
+}
+
+.leaflet-container {
+  font-family: inherit;
+  z-index: 0;
+}
+
+/* Champs de formulaire cohérents */
+@layer components {
+  .field {
+    @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] text-ink outline-none transition placeholder:text-muted/70 focus:border-navy-700 focus:ring-2 focus:ring-navy-700/15;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-navy-900 px-5 py-2.5 text-[15px] font-semibold text-white transition hover:bg-navy-800 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 text-[15px] font-medium text-ink transition hover:border-navy-700/40;
+  }
 }
