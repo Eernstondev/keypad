@@ -64,6 +64,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   return <FavoritesContext value={value}>{children}</FavoritesContext>;
 }
 
+// État de connexion déjà connu du fournisseur (évite une requête de plus)
+export function useSignedIn() {
+  return use(FavoritesContext)?.signedIn ?? false;
+}
+
 export function FavoriteButton({ propertyId, className = "" }: { propertyId: string; className?: string }) {
   const ctx = use(FavoritesContext);
   const router = useRouter();

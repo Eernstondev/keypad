@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED = ["/publier", "/mes-annonces", "/favoris", "/admin"];
+const PROTECTED = ["/publier", "/mes-annonces", "/favoris", "/rendez-vous", "/agent", "/admin"];
 
 // Rafraîchit la session Supabase à chaque navigation et protège les pages privées.
 export async function proxy(request: NextRequest) {

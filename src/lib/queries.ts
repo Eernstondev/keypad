@@ -2,7 +2,9 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import {
+  AGENT_COLUMNS,
   PROPERTY_TYPES,
+  type Agent,
   TRANSACTION_TYPES,
   type Currency,
   type Property,
@@ -122,7 +124,7 @@ export async function searchProperties(f: SearchFilters) {
   const { data, count, error } = await q.range(from, from + PAGE_SIZE - 1);
 
   if (error) throw new Error(`Recherche impossible : ${error.message}`);
-  return { items: (data ?? []) as Property[], total: count ?? 0 };
+  return { items: await attachAgents((data ?? []) as Property[]), total: count ?? 0 };
 }
 
 // Même type de transaction, même commune d'abord, puis même département
@@ -145,10 +147,10 @@ export async function getSimilarProperties(p: Pick<Property, "id" | "transaction
 
   const { data: sameCommune } = await base().eq("commune", p.commune);
   const items = (sameCommune ?? []) as Property[];
-  if (items.length >= LIMIT) return items;
+  if (items.length >= LIMIT) return attachAgents(items);
 
   const { data: sameDepartment } = await base().eq("department", p.department).neq("commune", p.commune);
-  return [...items, ...((sameDepartment ?? []) as Property[])].slice(0, LIMIT);
+  return attachAgents([...items, ...((sameDepartment ?? []) as Property[])].slice(0, LIMIT));
 }
 
 export async function getProperty(id: string) {
@@ -166,5 +168,59 @@ export async function getProperty(id: string) {
     .maybeSingle();
 
   if (error) throw new Error(`Annonce introuvable : ${error.message}`);
-  return data as Property | null;
+  if (!data) return null;
+  const [withAgent] = await attachAgents([data as Property]);
+  return withAgent;
+}
+
+// ───────────── Agents ─────────────
+
+// Ajoute la fiche de l'agent aux annonces publiées par un agent actif (la RLS masque les agents expirés)
+async function attachAgents(items: Property[]): Promise<Property[]> {
+  const ownerIds = [...new Set(items.map((p) => p.owner_id).filter((id): id is string => id !== null))];
+  if (ownerIds.length === 0) return items;
+
+  const { data } = await publicClient().from("agents").select(AGENT_COLUMNS).in("id", ownerIds);
+  const byId = new Map(((data ?? []) as Agent[]).map((a) => [a.id, a]));
+  return items.map((p) => ({ ...p, agent: (p.owner_id && byId.get(p.owner_id)) || null }));
+}
+
+export async function listAgents() {
+  "use cache";
+  cacheTag("agents");
+  cacheLife("minutes");
+
+  const { data, error } = await publicClient().from("agents").select(AGENT_COLUMNS).order("display_name");
+  if (error) throw new Error(`Agents indisponibles : ${error.message}`);
+  return (data ?? []) as Agent[];
+}
+
+export async function getAgentPage(id: string) {
+  "use cache";
+  cacheTag("agents", "properties", `agent:${id}`);
+  cacheLife("minutes");
+
+  if (!UUID_RE.test(id)) return null;
+  const supabase = publicClient();
+
+  const { data: agent } = await supabase.from("agents").select(AGENT_COLUMNS).eq("id", id).maybeSingle();
+  if (!agent) return null;
+
+  const [listingsRes, statsRes] = await Promise.all([
+    supabase
+      .from("properties")
+      .select(PROPERTY_COLUMNS)
+      .eq("owner_id", id)
+      .eq("status", "publie")
+      .order("created_at", { ascending: false })
+      .limit(48),
+    supabase.rpc("agent_public_stats", { p_agent: id }).maybeSingle(),
+  ]);
+
+  const stats = statsRes.data as { active_count: number; closed_count: number } | null;
+  return {
+    agent: agent as Agent,
+    listings: ((listingsRes.data ?? []) as Property[]).map((p) => ({ ...p, agent: agent as Agent })),
+    closedCount: Number(stats?.closed_count ?? 0),
+  };
 }

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { AgentCard } from "@/components/agent-card";
 import { FavoriteButton } from "@/components/favorites";
 import { PropertyMap } from "@/components/map";
 import { PropertyCard } from "@/components/property-card";
@@ -19,6 +20,7 @@ import {
 import { getProperty, getSimilarProperties } from "@/lib/queries";
 import { ShareButton, ViewTracker, WhatsAppButton } from "./listing-actions";
 import { ReportForm } from "./report-form";
+import { VisitRequestForm } from "./visit-request-form";
 
 export async function generateMetadata({ params }: PageProps<"/annonces/[id]">): Promise<Metadata> {
   const p = await getProperty((await params).id);
@@ -141,9 +143,16 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
                 Annonce fictive, pas de contact
               </p>
             ) : (
-              <WhatsAppButton propertyId={p.id} href={whatsappLink(p.whatsapp, message)} />
+              <>
+                <WhatsAppButton propertyId={p.id} href={whatsappLink(p.whatsapp, message)} />
+                <div className="mt-3">
+                  <VisitRequestForm propertyId={p.id} ownerLabel={p.agent ? "l'agent" : "le propriétaire"} />
+                </div>
+              </>
             )}
           </div>
+
+          {p.agent && <AgentCard agent={p.agent} listingTitle={p.title} />}
 
           <div className="rounded-2xl border border-gold-500/40 bg-gold-100/60 p-5 text-sm">
             <p className="font-semibold text-navy-900">Avant de payer</p>

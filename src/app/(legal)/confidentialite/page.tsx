@@ -13,6 +13,8 @@ export default function PrivacyPage() {
       <ul>
         <li><strong>Votre adresse e-mail</strong>, pour vous connecter. Elle n&apos;est jamais affichée publiquement.</li>
         <li><strong>Le contenu de vos annonces</strong> : texte, prix, photos, numéro WhatsApp et, si vous le choisissez, la position du bien sur la carte.</li>
+        <li><strong>Les demandes de visite</strong> : votre nom, votre téléphone et vos disponibilités sont transmis uniquement au propriétaire ou à l&apos;agent du bien concerné.</li>
+        <li><strong>Le profil des agents</strong> : photo, agence, présentation et coordonnées professionnelles, affichés publiquement à leur demande.</li>
         <li><strong>Les signalements</strong> que vous envoyez. Ils ne sont visibles que par l&apos;équipe de modération.</li>
         <li><strong>Un cookie de session</strong>, indispensable pour rester connecté. Nous n&apos;utilisons ni publicité ni pistage.</li>
       </ul>

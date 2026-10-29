@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { PublishForm } from "./publish-form";
 
 export const metadata: Metadata = { title: "Publier une annonce" };
@@ -21,5 +21,9 @@ export default function PublishPage() {
 async function AuthedForm() {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion?next=/publier");
-  return <PublishForm userId={user.id} />;
+
+  // Agent : son WhatsApp professionnel est proposé par défaut
+  const supabase = await createClient();
+  const { data: agent } = await supabase.from("agents").select("whatsapp").eq("id", user.id).maybeSingle();
+  return <PublishForm userId={user.id} defaultWhatsapp={agent?.whatsapp ?? undefined} />;
 }

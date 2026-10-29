@@ -19,6 +19,7 @@ export function SiteHeader() {
         <nav className="mr-auto hidden items-center gap-1 pl-6 text-sm font-medium md:flex">
           <Link href="/?transaction=location" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Louer</Link>
           <Link href="/?transaction=vente" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Acheter</Link>
+          <Link href="/agents" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Agents</Link>
         </nav>
 
         <Suspense fallback={<GuestNav />}>
@@ -32,7 +33,7 @@ export function SiteHeader() {
 function GuestNav() {
   return (
     <nav className="flex items-center gap-2">
-      <Link href="/connexion" className="hidden px-3 py-2 text-sm font-medium text-ink sm:block">
+      <Link href="/connexion" className="px-3 py-2 text-sm font-medium text-ink">
         Connexion
       </Link>
       <Link href="/publier" className="btn-primary !px-4 !py-2 text-sm">
@@ -42,21 +43,44 @@ function GuestNav() {
   );
 }
 
+const ACCOUNT_LINKS = [
+  ["/mes-annonces", "Mes annonces"],
+  ["/rendez-vous", "Rendez-vous"],
+  ["/favoris", "Favoris"],
+  ["/agent", "Espace agent"],
+] as const;
+
 async function UserNav() {
   const user = await getCurrentUser();
   if (!user) return <GuestNav />;
 
   return (
-    <nav className="flex items-center gap-1 sm:gap-2">
-      <Link href="/favoris" className="hidden px-3 py-2 text-sm font-medium text-ink sm:block">
-        Favoris
-      </Link>
-      <Link href="/mes-annonces" className="px-3 py-2 text-sm font-medium text-ink">
-        Mes annonces
-      </Link>
-      <form action={signOut} className="hidden sm:block">
-        <button className="px-3 py-2 text-sm text-muted hover:text-ink">Déconnexion</button>
-      </form>
+    <nav className="flex items-center gap-2">
+      {/* Menu sans JavaScript : fonctionne même si le script ne charge pas */}
+      <details className="group relative">
+        <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-ink hover:bg-sand-50">
+          Mon compte
+          <svg viewBox="0 0 20 20" fill="currentColor" className="size-4 transition group-open:rotate-180" aria-hidden>
+            <path d="M5.2 7.2a.75.75 0 0 1 1.06 0L10 10.94l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.26a.75.75 0 0 1 0-1.06Z" />
+          </svg>
+        </summary>
+        <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-white py-1.5 shadow-xl">
+          {user.email && <p className="truncate px-4 pb-2 pt-1.5 text-xs text-muted">{user.email}</p>}
+          {ACCOUNT_LINKS.map(([href, label]) => (
+            <Link key={href} href={href} className="block px-4 py-2 text-sm text-ink hover:bg-sand-50">
+              {label}
+            </Link>
+          ))}
+          <Link href="/agents" className="block px-4 py-2 text-sm text-ink hover:bg-sand-50 md:hidden">
+            Annuaire des agents
+          </Link>
+          <form action={signOut} className="border-t border-line pt-1.5">
+            <button className="w-full px-4 py-2 text-left text-sm text-muted hover:bg-sand-50 hover:text-ink">
+              Déconnexion
+            </button>
+          </form>
+        </div>
+      </details>
       <Link href="/publier" className="btn-primary !px-4 !py-2 text-sm">
         Publier
       </Link>
