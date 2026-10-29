@@ -7,7 +7,7 @@ export type PropertyMedia = { storage_path: string; position: number };
 
 export type Property = {
   id: string;
-  owner_id: string;
+  owner_id: string | null; // null uniquement pour les annonces de démo
   title: string;
   description: string | null;
   property_type: PropertyType;
