@@ -22,8 +22,13 @@ async function AuthedForm() {
   const user = await getCurrentUser();
   if (!user) redirect("/connexion?next=/publier");
 
-  // Agent : son WhatsApp professionnel est proposé par défaut
+  // Agent : WhatsApp professionnel proposé par défaut, emplacement obligatoire
   const supabase = await createClient();
-  const { data: agent } = await supabase.from("agents").select("whatsapp").eq("id", user.id).maybeSingle();
-  return <PublishForm userId={user.id} defaultWhatsapp={agent?.whatsapp ?? undefined} />;
+  const [{ data: agent }, { data: isAgent }] = await Promise.all([
+    supabase.from("agents").select("whatsapp").eq("id", user.id).maybeSingle(),
+    supabase.rpc("is_active_agent", { p_user: user.id }),
+  ]);
+  return (
+    <PublishForm userId={user.id} defaultWhatsapp={agent?.whatsapp ?? undefined} requireLocation={isAgent === true} />
+  );
 }

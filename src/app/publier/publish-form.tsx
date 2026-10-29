@@ -14,6 +14,7 @@ import {
   type TransactionType,
 } from "@/lib/listings";
 import { refreshListings } from "@/app/actions";
+import { LocationSearch } from "./location-search";
 
 const MAX_PHOTOS = 8;
 const MAX_SIDE = 1600;
@@ -52,10 +53,12 @@ export function PublishForm({
   userId,
   initial,
   defaultWhatsapp,
+  requireLocation = false,
 }: {
   userId: string;
   initial?: Property;
   defaultWhatsapp?: string;
+  requireLocation?: boolean; // agents : position sur la carte obligatoire
 }) {
   const router = useRouter();
   const [transaction, setTransaction] = useState<TransactionType>(initial?.transaction_type ?? "location");
@@ -110,6 +113,10 @@ export function PublishForm({
     e.preventDefault();
     setError(null);
     if (photoCount === 0) return setError("Ajoutez au moins une photo.");
+    if (requireLocation && !picked) {
+      document.getElementById("emplacement")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return setError("Placez le bien sur la carte : l'emplacement est obligatoire pour les annonces d'agents.");
+    }
     if (picked && !inHaiti(picked.lat, picked.lng)) return setError("La position doit se trouver en Haïti.");
 
     const form = new FormData(e.currentTarget);
@@ -143,7 +150,7 @@ export function PublishForm({
       setStatus(null);
       // Message de la base (ex. limite de 5 annonces par jour) sinon message générique
       return setError(
-        saveError?.message.startsWith("Limite atteinte")
+        saveError?.code === "P0001"
           ? saveError.message
           : "Annonce refusée : vérifiez les champs (titre de 10 caractères minimum, numéro valide…).",
       );
@@ -289,18 +296,26 @@ export function PublishForm({
             defaultValue={initial?.address_hint ?? undefined} placeholder="Après l'église, portail bleu" />
         </Field>
 
-        <div>
+        <div id="emplacement">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="label !mb-0">Position sur la carte (recommandé)</span>
+            <span className="label !mb-0">
+              Position sur la carte{" "}
+              {requireLocation ? <span className="text-red-700">(obligatoire)</span> : "(recommandé)"}
+            </span>
             <button type="button" onClick={locateMe} className="text-sm font-semibold text-navy-700">
               Utiliser ma position
             </button>
           </div>
-          <div className="h-72 overflow-hidden rounded-2xl border border-line">
+          <LocationSearch onSelect={(lat, lng) => setPicked({ lat, lng })} />
+          <div
+            className={`h-72 overflow-hidden rounded-2xl border ${requireLocation && !picked && error ? "border-red-400" : "border-line"}`}
+          >
             <PropertyMap picked={picked} onPick={(lat, lng) => setPicked({ lat, lng })} className="h-full w-full" />
           </div>
           <p className="mt-2 text-xs text-muted">
-            {picked ? "Point placé. Touchez la carte pour le déplacer." : "Touchez la carte pour placer le bien."}
+            {picked
+              ? "Point placé. Touchez la carte pour l'ajuster précisément sur le bien."
+              : "Cherchez le lieu ci-dessus ou touchez la carte pour placer le bien."}
           </p>
         </div>
       </Section>

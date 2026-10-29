@@ -34,5 +34,6 @@ async function EditForm({ params }: Pick<PageProps<"/mes-annonces/[id]/modifier"
     .maybeSingle();
 
   if (!data) notFound();
-  return <PublishForm userId={auth.claims.sub} initial={data as Property} />;
+  const { data: isAgent } = await supabase.rpc("is_active_agent", { p_user: auth.claims.sub });
+  return <PublishForm userId={auth.claims.sub} initial={data as Property} requireLocation={isAgent === true} />;
 }
