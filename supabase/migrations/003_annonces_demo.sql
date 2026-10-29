@@ -5,7 +5,7 @@
 --
 -- Pour tout retirer plus tard :  delete from public.properties where is_demo;
 
-alter table public.properties add column is_demo boolean not null default false;
+alter table public.properties add column if not exists is_demo boolean not null default false;
 -- Pas de grant sur is_demo : un utilisateur ne peut pas marquer son annonce comme démo.
 
 do $$
@@ -14,9 +14,12 @@ declare
   v_id uuid;
   img constant text := '?auto=format&fit=crop&w=1600&q=75';
 begin
+  -- Comptes créés avant schema.sql : leur profil n'a pas été généré, on le crée ici
+  insert into public.profiles (id) select id from auth.users on conflict (id) do nothing;
+
   select id into v_owner from public.profiles order by (role = 'admin') desc, created_at limit 1;
   if v_owner is null then
-    raise exception 'Connecte-toi une première fois sur le site, puis relance ce fichier.';
+    raise exception 'Aucun compte : connecte-toi une première fois sur le site (code reçu par e-mail), puis relance ce fichier.';
   end if;
 
   -- 1. Villa avec piscine — Pétion-Ville (vente)
