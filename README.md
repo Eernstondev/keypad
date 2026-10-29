@@ -9,6 +9,8 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
 1. **SQL Editor** → exécuter, dans l'ordre, chaque fichier en entier :
    - `supabase/schema.sql`
    - `supabase/migrations/002_modifier_expiration.sql` (expiration des annonces après 60 jours)
+   - `supabase/migrations/003_annonces_demo.sql` (8 annonces de démonstration ; se connecter une fois avant).
+     Pour les retirer : `delete from public.properties where is_demo;`
 2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
    ```html
    <h2>Votre code KayAyiti</h2>

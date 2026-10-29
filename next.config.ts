@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
         hostname: new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname,
         pathname: "/storage/v1/object/public/**",
       },
+      // Photos des annonces de démonstration
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   partialPrefetching: true,
