@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED = ["/publier", "/mes-annonces", "/admin"];
+const PROTECTED = ["/publier", "/mes-annonces", "/favoris", "/admin"];
 
 // Rafraîchit la session Supabase à chaque navigation et protège les pages privées.
 export async function proxy(request: NextRequest) {
@@ -39,5 +39,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|icon|apple-icon|manifest|.*\\.(?:png|jpg|jpeg|webp|svg|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|icon|apple-icon|manifest|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|webp|svg|ico)$).*)"],
 };

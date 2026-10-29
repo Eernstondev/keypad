@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { REPORT_REASONS, formatPrice, locationLabel, type Property, type ReportReason } from "@/lib/listings";
-import { setReportStatus, setVerified } from "@/app/actions";
+import { adminSetListingStatus, setReportStatus, setVerified } from "@/app/actions";
 
 export const metadata: Metadata = { title: "Administration", robots: { index: false } };
 
@@ -97,11 +97,18 @@ async function AdminContent() {
                   {formatPrice(p)} · {locationLabel(p)} {p.status === "archive" && "· archivée"}
                 </p>
               </div>
-              <form action={setVerified.bind(null, p.id, !p.verified)}>
-                <button className={p.verified ? "btn-ghost !py-1.5 text-sm" : "btn-primary !py-1.5 text-sm"}>
-                  {p.verified ? "Retirer le badge" : "Marquer vérifié"}
-                </button>
-              </form>
+              <div className="flex shrink-0 gap-2">
+                <form action={setVerified.bind(null, p.id, !p.verified)}>
+                  <button className={p.verified ? "btn-ghost !py-1.5 text-sm" : "btn-primary !py-1.5 text-sm"}>
+                    {p.verified ? "Retirer le badge" : "Marquer vérifié"}
+                  </button>
+                </form>
+                <form action={adminSetListingStatus.bind(null, p.id, p.status === "archive" ? "publie" : "archive")}>
+                  <button className="btn-ghost !py-1.5 text-sm">
+                    {p.status === "archive" ? "Remettre en ligne" : "Archiver"}
+                  </button>
+                </form>
+              </div>
             </li>
           ))}
         </ul>

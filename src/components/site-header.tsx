@@ -48,6 +48,9 @@ async function UserNav() {
 
   return (
     <nav className="flex items-center gap-1 sm:gap-2">
+      <Link href="/favoris" className="hidden px-3 py-2 text-sm font-medium text-ink sm:block">
+        Favoris
+      </Link>
       <Link href="/mes-annonces" className="px-3 py-2 text-sm font-medium text-ink">
         Mes annonces
       </Link>
