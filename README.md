@@ -14,6 +14,7 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
    - `supabase/migrations/004_prix_comparable.sql` (tri par prix entre HTG et USD, taux indicatif 131)
    - `supabase/migrations/005_favoris_stats_moderation.sql` (favoris, vues et clics WhatsApp, limite de 5 annonces par 24 h, archivage admin)
    - `supabase/migrations/006_agents_visites_vendus.sql` (agents immobiliers, demandes de visite, biens vendus / loués)
+   - `supabase/migrations/007_notifications_email.sql` (e-mails automatiques des visites, désactivés tant que la clé n'est pas ajoutée)
 2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
    ```html
    <h2>Votre code KayAyiti</h2>
@@ -51,6 +52,21 @@ La page `/admin` permet ensuite de traiter les signalements, d'attribuer le badg
 4. L'agent complète son profil dans `/agent` (photo, agence, contacts). Ses annonces affichent alors sa fiche.
 
 À l'expiration, le badge et le profil public disparaissent automatiquement ; ses annonces restent en ligne.
+
+## 3 ter. Activer les e-mails de notification
+
+Les demandes de visite envoient un e-mail à l'agent (ou au propriétaire), et la confirmation ou le refus un e-mail au visiteur. L'envoi passe par [Resend](https://resend.com) :
+
+1. Créer un compte Resend et **vérifier ton domaine** (sans domaine vérifié, Resend n'envoie qu'à ta propre adresse).
+2. Créer une clé API, puis dans le SQL Editor :
+   ```sql
+   select vault.create_secret('re_xxxxxxxxxxxx', 'resend_api_key');
+   select vault.create_secret('KayAyiti <notifications@ton-domaine.com>', 'email_from');
+   select vault.create_secret('https://ton-domaine.com', 'site_url');
+   ```
+3. Le même compte Resend peut servir de SMTP pour les codes de connexion (Authentication → SMTP).
+
+Sans ces clés, rien n'est envoyé et le site fonctionne normalement (pastille dans « Mon compte » et bouton WhatsApp après chaque demande).
 
 ## 4. Déployer (Vercel)
 

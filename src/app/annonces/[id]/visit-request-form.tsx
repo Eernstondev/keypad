@@ -3,22 +3,39 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useSignedIn } from "@/components/favorites";
-import { VISIT_TIMES } from "@/lib/listings";
+import { VISIT_TIMES, whatsappLink, type VisitTime } from "@/lib/listings";
 import { requestVisit } from "@/app/actions";
 
 // Date locale au format AAAA-MM-JJ (champ <input type="date">)
 const isoDay = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-// ownerLabel : « l'agent » ou « le propriétaire »
-export function VisitRequestForm({ propertyId, ownerLabel }: { propertyId: string; ownerLabel: string }) {
+const dayLabel = (iso: string) =>
+  new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(
+    new Date(`${iso}T12:00:00Z`),
+  );
+
+// ownerLabel : « l'agent » ou « le propriétaire » ; contactWhatsapp : numéro à prévenir
+export function VisitRequestForm({
+  propertyId,
+  ownerLabel,
+  contactWhatsapp,
+  listingTitle,
+}: {
+  propertyId: string;
+  ownerLabel: string;
+  contactWhatsapp: string;
+  listingTitle: string;
+}) {
   const signedIn = useSignedIn();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<{ name: string; date: string; time: VisitTime } | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (sent) {
+    // Le message WhatsApp accélère la réponse : la plupart des agents vivent sur WhatsApp
+    const message = `Bonjour, je suis ${sent.name}. Je viens de demander une visite sur KayAyiti pour « ${listingTitle} », le ${dayLabel(sent.date)} (${VISIT_TIMES[sent.time].toLowerCase()}). Merci de me confirmer.`;
     return (
       <div className="rounded-2xl border border-navy-700/30 bg-navy-100 p-5 text-sm text-navy-900">
         <p className="font-semibold">Demande envoyée.</p>
@@ -26,6 +43,14 @@ export function VisitRequestForm({ propertyId, ownerLabel }: { propertyId: strin
           La date vous sera confirmée par {ownerLabel}. Suivez votre demande dans{" "}
           <Link href="/rendez-vous" className="font-semibold underline">Mes rendez-vous</Link>.
         </p>
+        <a
+          href={whatsappLink(contactWhatsapp, message)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex items-center justify-center rounded-xl bg-[#25D366] px-4 py-2.5 font-semibold text-white hover:brightness-95"
+        >
+          Prévenir {ownerLabel} sur WhatsApp
+        </a>
       </div>
     );
   }
@@ -53,7 +78,12 @@ export function VisitRequestForm({ propertyId, ownerLabel }: { propertyId: strin
         setError(null);
         startTransition(async () => {
           const result = await requestVisit(propertyId, form);
-          if (result.ok) setSent(true);
+          if (result.ok)
+            setSent({
+              name: String(form.get("name") ?? "").trim(),
+              date: String(form.get("preferred_date") ?? ""),
+              time: String(form.get("preferred_time") ?? "matin") as VisitTime,
+            });
           else setError(result.error);
         });
       }}

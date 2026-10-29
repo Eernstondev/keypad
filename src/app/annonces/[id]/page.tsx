@@ -146,7 +146,12 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
               <>
                 <WhatsAppButton propertyId={p.id} href={whatsappLink(p.whatsapp, message)} />
                 <div className="mt-3">
-                  <VisitRequestForm propertyId={p.id} ownerLabel={p.agent ? "l'agent" : "le propriétaire"} />
+                  <VisitRequestForm
+                    propertyId={p.id}
+                    ownerLabel={p.agent ? "l'agent" : "le propriétaire"}
+                    contactWhatsapp={p.agent?.whatsapp ?? p.whatsapp}
+                    listingTitle={p.title}
+                  />
                 </div>
               </>
             )}
