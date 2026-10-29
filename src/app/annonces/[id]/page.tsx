@@ -58,21 +58,27 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
         </p>
       )}
       {photos.length > 0 ? (
-        <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        // Mobile : défilement horizontal. Ordinateur : grande photo + grille, chaque photo s'ouvre en grand.
+        <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 md:mx-0 md:grid md:grid-flow-dense md:auto-rows-[190px] md:grid-cols-4 md:overflow-visible md:px-0">
           {photos.map((m, i) => (
-            <div
+            <a
               key={m.storage_path}
-              className="relative aspect-[4/3] w-[88%] shrink-0 snap-center overflow-hidden rounded-2xl bg-sand-100 sm:w-[60%]"
+              href={mediaUrl(m.storage_path)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`relative aspect-[4/3] w-[88%] shrink-0 snap-center overflow-hidden rounded-2xl bg-sand-100 md:aspect-auto md:w-auto ${
+                i === 0 ? "md:col-span-2 md:row-span-2" : ""
+              } ${photos.length === 1 ? "md:col-span-4" : ""}`}
             >
               <Image
                 src={mediaUrl(m.storage_path)}
                 alt={`${p.title} — photo ${i + 1}`}
                 fill
                 priority={i === 0}
-                sizes="(min-width: 640px) 60vw, 88vw"
-                className="object-cover"
+                sizes={i === 0 ? "(min-width: 768px) 50vw, 88vw" : "(min-width: 768px) 25vw, 88vw"}
+                className="object-cover transition duration-300 hover:scale-[1.02]"
               />
-            </div>
+            </a>
           ))}
         </div>
       ) : (

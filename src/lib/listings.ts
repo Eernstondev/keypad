@@ -80,6 +80,9 @@ export function coverPath(p: Pick<Property, "property_media">) {
   return [...p.property_media].sort((a, b) => a.position - b.position)[0]?.storage_path ?? null;
 }
 
+// Taux indicatif pour comparer HTG et USD (doit correspondre à la migration 004)
+export const USD_HTG = 131;
+
 const numberFormat = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
 export function formatPrice(p: Pick<Property, "price" | "currency" | "price_period">) {
@@ -88,6 +91,14 @@ export function formatPrice(p: Pick<Property, "price" | "currency" | "price_peri
   if (p.price_period === "mois") return `${value} / mois`;
   if (p.price_period === "annee") return `${value} / an`;
   return value;
+}
+
+// Prix compact pour les étiquettes de la carte : « 450K HTG », « 1,2K $ »
+export function shortPrice(p: Pick<Property, "price" | "currency">) {
+  const fmt = (v: number) => v.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+  const n = p.price;
+  const value = n >= 1e6 ? `${fmt(n / 1e6)}M` : n >= 1e3 ? `${fmt(n / 1e3)}K` : fmt(n);
+  return p.currency === "USD" ? `${value} $` : `${value} HTG`;
 }
 
 // Numéro haïtien à 8 chiffres → indicatif 509 ajouté automatiquement

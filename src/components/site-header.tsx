@@ -16,6 +16,11 @@ export function SiteHeader() {
           </span>
         </Link>
 
+        <nav className="mr-auto hidden items-center gap-1 pl-6 text-sm font-medium md:flex">
+          <Link href="/?transaction=location" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Louer</Link>
+          <Link href="/?transaction=vente" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Acheter</Link>
+        </nav>
+
         <Suspense fallback={<GuestNav />}>
           <UserNav />
         </Suspense>
