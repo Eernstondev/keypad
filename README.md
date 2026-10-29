@@ -15,6 +15,7 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
    - `supabase/migrations/005_favoris_stats_moderation.sql` (favoris, vues et clics WhatsApp, limite de 5 annonces par 24 h, archivage admin)
    - `supabase/migrations/006_agents_visites_vendus.sql` (agents immobiliers, demandes de visite, biens vendus / loués)
    - `supabase/migrations/007_notifications_email.sql` (e-mails automatiques des visites, désactivés tant que la clé n'est pas ajoutée)
+   - `supabase/migrations/008_emplacement_agents.sql` (position sur la carte obligatoire pour les annonces d'agents)
 2. **Authentication → Sign In / Providers → Email** : activer **Confirm email** (validation de l'adresse à l'inscription).
 3. **Authentication → Email Templates** : mettre le code dans deux modèles.
    - **Confirm signup** :
