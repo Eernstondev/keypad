@@ -47,6 +47,7 @@ const ACCOUNT_LINKS = [
   ["/mes-annonces", "Mes annonces"],
   ["/rendez-vous", "Rendez-vous"],
   ["/favoris", "Favoris"],
+  ["/mot-de-passe", "Mot de passe"],
 ] as const;
 
 async function UserNav() {

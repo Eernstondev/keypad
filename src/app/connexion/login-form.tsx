@@ -65,6 +65,11 @@ export function LoginForm() {
 
   const rateLimited = (status?: number) =>
     status === 429 ? "Trop de tentatives. Patientez quelques minutes avant de réessayer." : null;
+  // Service d'e-mail de démarrage de Supabase : n'envoie qu'aux adresses autorisées
+  const mailRefused = (code?: string) =>
+    code === "email_address_not_authorized"
+      ? "L'envoi d'e-mail vers cette adresse n'est pas encore activé. Contactez-nous pour finaliser votre inscription."
+      : null;
 
   function login(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -99,7 +104,7 @@ export function LoginForm() {
       if (error) {
         if (error.code === "weak_password") return `Mot de passe trop faible : ${MIN_PASSWORD} caractères minimum, avec lettres et chiffres.`;
         if (error.code === "user_already_exists" || error.code === "email_exists") return "Un compte existe déjà avec cet e-mail. Connectez-vous.";
-        return rateLimited(error.status) ?? "Inscription impossible. Vérifiez l'adresse e-mail.";
+        return mailRefused(error.code) ?? rateLimited(error.status) ?? "Inscription impossible. Vérifiez l'adresse e-mail.";
       }
       // Validation d'e-mail désactivée dans Supabase : session ouverte directement
       if (data.session) return done();
@@ -123,7 +128,7 @@ export function LoginForm() {
   function resendSignupCode() {
     void run(async () => {
       const { error } = await supabase().auth.resend({ type: "signup", email: cleanEmail() });
-      if (error) return rateLimited(error.status) ?? "Envoi impossible pour le moment.";
+      if (error) return mailRefused(error.code) ?? rateLimited(error.status) ?? "Envoi impossible pour le moment.";
       setCooldown(RESEND_DELAY);
       setInfo("Nouveau code envoyé.");
     });
@@ -133,9 +138,9 @@ export function LoginForm() {
     e.preventDefault();
     void run(async () => {
       const { error } = await supabase().auth.resetPasswordForEmail(cleanEmail(), {
-        redirectTo: `${window.location.origin}/auth/callback?next=/connexion`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/mot-de-passe`,
       });
-      if (error) return rateLimited(error.status) ?? "Envoi impossible. Vérifiez l'adresse.";
+      if (error) return mailRefused(error.code) ?? rateLimited(error.status) ?? "Envoi impossible. Vérifiez l'adresse.";
       setCooldown(RESEND_DELAY);
       setStep("reset");
     });
@@ -178,7 +183,7 @@ export function LoginForm() {
   );
 
   const codeInput = (
-    <Field label="Code reçu par e-mail" htmlFor="code">
+    <Field label="Code reçu par e-mail (facultatif si vous cliquez sur le lien)" htmlFor="code">
       <input
         id="code"
         name="code"
@@ -206,8 +211,12 @@ export function LoginForm() {
   if (step === "verify" || step === "reset") {
     return (
       <form onSubmit={step === "verify" ? verify : reset} className="mt-8 space-y-4">
-        <p className="text-sm text-muted">
-          Code envoyé à <span className="font-medium text-ink">{cleanEmail()}</span>. Vérifiez aussi les spams.
+        <p className="rounded-xl bg-navy-100 p-3 text-sm text-navy-900">
+          E-mail envoyé à <span className="font-semibold">{cleanEmail()}</span>.{" "}
+          {step === "verify"
+            ? "Cliquez sur le lien de l'e-mail pour activer votre compte, ou saisissez le code s'il y en a un."
+            : "Cliquez sur le lien de l'e-mail pour choisir un nouveau mot de passe, ou saisissez le code s'il y en a un."}{" "}
+          Vérifiez aussi les spams.
         </p>
         {codeInput}
         {step === "reset" && (
