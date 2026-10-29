@@ -30,7 +30,50 @@ export type Property = {
   is_demo: boolean;
   created_at: string;
   property_media: PropertyMedia[];
+  agent?: Agent | null; // ajouté après la requête si le propriétaire est un agent actif
 };
+
+export type Agent = {
+  id: string;
+  display_name: string;
+  agency_name: string | null;
+  bio: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  areas: string | null;
+  license_number: string | null;
+  photo_path: string | null;
+  active_until: string;
+};
+
+export const AGENT_COLUMNS =
+  "id, display_name, agency_name, bio, phone, whatsapp, email, areas, license_number, photo_path, active_until";
+
+export const VISIT_TIMES = {
+  matin: "Matin (8 h – 12 h)",
+  midi: "Midi (12 h – 14 h)",
+  apres_midi: "Après-midi (14 h – 17 h)",
+} as const;
+export type VisitTime = keyof typeof VISIT_TIMES;
+
+export const VISIT_STATUS = {
+  en_attente: "En attente",
+  confirmee: "Confirmée",
+  refusee: "Refusée",
+  annulee: "Annulée",
+  effectuee: "Effectuée",
+} as const;
+export type VisitStatus = keyof typeof VISIT_STATUS;
+
+export function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("");
+}
 
 export const PROPERTY_TYPES: Record<PropertyType, string> = {
   maison: "Maison",

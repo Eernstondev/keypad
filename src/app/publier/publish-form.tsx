@@ -48,7 +48,15 @@ const numberOrNull = (v: FormDataEntryValue | null) => {
 const textOrNull = (v: FormDataEntryValue | null) => String(v ?? "").trim() || null;
 
 // Sans `initial` : création. Avec `initial` : modification d'une annonce existante.
-export function PublishForm({ userId, initial }: { userId: string; initial?: Property }) {
+export function PublishForm({
+  userId,
+  initial,
+  defaultWhatsapp,
+}: {
+  userId: string;
+  initial?: Property;
+  defaultWhatsapp?: string;
+}) {
   const router = useRouter();
   const [transaction, setTransaction] = useState<TransactionType>(initial?.transaction_type ?? "location");
   const [existing, setExisting] = useState(() =>
@@ -328,7 +336,7 @@ export function PublishForm({ userId, initial }: { userId: string; initial?: Pro
       <Section title="Contact">
         <Field label="Numéro WhatsApp" htmlFor="whatsapp">
           <input id="whatsapp" name="whatsapp" required type="tel" inputMode="tel"
-            pattern="\+?[0-9 ]{8,16}" className="field" placeholder="3844 9148" defaultValue={initial?.whatsapp} />
+            pattern="\+?[0-9 ]{8,16}" className="field" placeholder="3844 9148" defaultValue={initial?.whatsapp ?? defaultWhatsapp} />
         </Field>
         <p className="text-xs text-muted">Les acheteurs et locataires vous contacteront directement sur ce numéro.</p>
       </Section>

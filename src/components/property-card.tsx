@@ -9,6 +9,7 @@ import {
   mediaUrl,
   type Property,
 } from "@/lib/listings";
+import { AgentAvatar } from "./agent-avatar";
 import { FavoriteButton } from "./favorites";
 import { VerifiedBadge } from "./verified-badge";
 
@@ -57,6 +58,15 @@ export function PropertyCard({ property: p }: { property: Property }) {
               .filter(Boolean)
               .join(" · ")}
           </p>
+          {p.agent && (
+            <p className="flex items-center gap-2 border-t border-line pt-2.5 text-xs text-muted">
+              <AgentAvatar agent={p.agent} size={22} />
+              <span className="truncate">
+                <span className="font-semibold text-ink">{p.agent.display_name}</span>
+                {p.agent.agency_name && ` · ${p.agent.agency_name}`}
+              </span>
+            </p>
+          )}
         </div>
       </Link>
 

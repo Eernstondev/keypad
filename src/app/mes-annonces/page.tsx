@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { coverPath, formatPrice, locationLabel, mediaUrl, type Property } from "@/lib/listings";
 import { PROPERTY_COLUMNS } from "@/lib/queries";
 import { VerifiedBadge } from "@/components/verified-badge";
-import { deleteListing, setListingStatus, signOut } from "@/app/actions";
+import { closeListing, deleteListing, setListingStatus, signOut } from "@/app/actions";
 
 export const metadata: Metadata = { title: "Mes annonces" };
 
@@ -37,12 +37,18 @@ async function MyListings() {
 
   const { data, error } = await supabase
     .from("properties")
-    .select(`${PROPERTY_COLUMNS}, expires_at, view_count, whatsapp_clicks`)
+    .select(`${PROPERTY_COLUMNS}, expires_at, view_count, whatsapp_clicks, closed_reason, closed_at`)
     .eq("owner_id", auth.claims.sub)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error("Impossible de charger vos annonces.");
-  const listings = (data ?? []) as (Property & { expires_at: string; view_count: number; whatsapp_clicks: number })[];
+  const listings = (data ?? []) as (Property & {
+    expires_at: string;
+    view_count: number;
+    whatsapp_clicks: number;
+    closed_reason: "vendu" | "loue" | null;
+    closed_at: string | null;
+  })[];
 
   if (listings.length === 0) {
     return (
@@ -57,6 +63,7 @@ async function MyListings() {
       {listings.map((p) => {
         const cover = coverPath(p);
         const archived = p.status === "archive";
+        const closed = p.closed_reason !== null;
         return (
           <li key={p.id} className="flex flex-col gap-4 rounded-2xl border border-line bg-white p-3 sm:flex-row sm:items-center">
             <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl bg-sand-100 sm:w-36">
@@ -67,10 +74,10 @@ async function MyListings() {
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                    archived ? "bg-sand-100 text-muted" : "bg-navy-100 text-navy-900"
+                    closed ? "bg-gold-100 text-gold-600" : archived ? "bg-sand-100 text-muted" : "bg-navy-100 text-navy-900"
                   }`}
                 >
-                  {archived ? "Archivée" : "En ligne"}
+                  {closed ? (p.closed_reason === "vendu" ? "Vendu" : "Loué") : archived ? "Archivée" : "En ligne"}
                 </span>
                 {p.verified && <VerifiedBadge />}
               </div>
@@ -88,15 +95,37 @@ async function MyListings() {
 
             <div className="flex flex-wrap items-center gap-2">
               {!archived && <Link href={`/annonces/${p.id}`} className="btn-ghost !py-2 text-sm">Voir</Link>}
-              <Link href={`/mes-annonces/${p.id}/modifier`} className="btn-ghost !py-2 text-sm">Modifier</Link>
-              {/* Remettre en ligne ou prolonger = 60 jours de plus */}
-              <form action={setListingStatus.bind(null, p.id, "publie")}>
-                <button className="btn-ghost !py-2 text-sm">{archived ? "Remettre en ligne" : "Prolonger"}</button>
-              </form>
+              {!closed && (
+                <>
+                  <Link href={`/mes-annonces/${p.id}/modifier`} className="btn-ghost !py-2 text-sm">Modifier</Link>
+                  {/* Remettre en ligne ou prolonger : 60 jours (90 pour les agents) */}
+                  <form action={setListingStatus.bind(null, p.id, "publie")}>
+                    <button className="btn-ghost !py-2 text-sm">{archived ? "Remettre en ligne" : "Prolonger"}</button>
+                  </form>
+                </>
+              )}
               {!archived && (
                 <form action={setListingStatus.bind(null, p.id, "archive")}>
                   <button className="btn-ghost !py-2 text-sm">Archiver</button>
                 </form>
+              )}
+              {!closed && (
+                <details className="relative">
+                  <summary className="btn-primary cursor-pointer list-none !py-2 text-sm">
+                    {p.transaction_type === "vente" ? "Vendu" : "Loué"}
+                  </summary>
+                  <form
+                    action={closeListing.bind(null, p.id, p.transaction_type === "vente" ? "vendu" : "loue")}
+                    className="absolute right-0 z-10 mt-2 w-64 rounded-xl border border-line bg-white p-3 shadow-lg"
+                  >
+                    <p className="text-sm text-ink">
+                      L&apos;annonce sera retirée du site et les visites prévues seront annulées. Cette action est définitive.
+                    </p>
+                    <button className="btn-primary mt-3 w-full !py-2 text-sm">
+                      Confirmer : {p.transaction_type === "vente" ? "bien vendu" : "bien loué"}
+                    </button>
+                  </form>
+                </details>
               )}
               {/* Confirmation sans JavaScript */}
               <details className="relative">

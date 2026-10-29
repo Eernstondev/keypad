@@ -13,6 +13,7 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
      Pour les retirer : `delete from public.properties where is_demo;`
    - `supabase/migrations/004_prix_comparable.sql` (tri par prix entre HTG et USD, taux indicatif 131)
    - `supabase/migrations/005_favoris_stats_moderation.sql` (favoris, vues et clics WhatsApp, limite de 5 annonces par 24 h, archivage admin)
+   - `supabase/migrations/006_agents_visites_vendus.sql` (agents immobiliers, demandes de visite, biens vendus / loués)
 2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
    ```html
    <h2>Votre code KayAyiti</h2>
@@ -40,7 +41,16 @@ update public.profiles set role = 'admin'
 where id = (select id from auth.users where email = 'ton-email@exemple.com');
 ```
 
-La page `/admin` permet ensuite de traiter les signalements et d'attribuer le badge « Vérifié ».
+La page `/admin` permet ensuite de traiter les signalements, d'attribuer le badge « Vérifié » et de gérer les agents.
+
+## 3 bis. Activer un agent immobilier
+
+1. L'agent se connecte une première fois sur le site (code par e-mail).
+2. Il paie son abonnement (MonCash, NatCash, virement…).
+3. Dans `/admin` → *Agents immobiliers* : saisir son e-mail de connexion, choisir la durée, « Activer l'accès ».
+4. L'agent complète son profil dans `/agent` (photo, agence, contacts). Ses annonces affichent alors sa fiche.
+
+À l'expiration, le badge et le profil public disparaissent automatiquement ; ses annonces restent en ligne.
 
 ## 4. Déployer (Vercel)
 
