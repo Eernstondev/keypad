@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions";
 
 export function SiteHeader() {
@@ -54,12 +54,30 @@ async function UserNav() {
   const user = await getCurrentUser();
   if (!user) return <GuestNav />;
 
+  // Rôle (lien admin) et demandes de visite à traiter (pastille)
+  const supabase = await createClient();
+  const [{ data: profile }, { count }] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("visit_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", user.id)
+      .eq("status", "en_attente"),
+  ]);
+  const isAdmin = profile?.role === "admin";
+  const pending = count ?? 0;
+
   return (
     <nav className="flex items-center gap-2">
       {/* Menu sans JavaScript : fonctionne même si le script ne charge pas */}
       <details className="group relative">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-ink hover:bg-sand-50">
           Mon compte
+          {pending > 0 && (
+            <span className="grid min-w-5 place-items-center rounded-full bg-gold-500 px-1.5 text-xs font-bold text-navy-950" aria-label={`${pending} demande(s) de visite en attente`}>
+              {pending}
+            </span>
+          )}
           <svg viewBox="0 0 20 20" fill="currentColor" className="size-4 transition group-open:rotate-180" aria-hidden>
             <path d="M5.2 7.2a.75.75 0 0 1 1.06 0L10 10.94l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.26a.75.75 0 0 1 0-1.06Z" />
           </svg>
@@ -67,10 +85,18 @@ async function UserNav() {
         <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-white py-1.5 shadow-xl">
           {user.email && <p className="truncate px-4 pb-2 pt-1.5 text-xs text-muted">{user.email}</p>}
           {ACCOUNT_LINKS.map(([href, label]) => (
-            <Link key={href} href={href} className="block px-4 py-2 text-sm text-ink hover:bg-sand-50">
+            <Link key={href} href={href} className="flex items-center justify-between px-4 py-2 text-sm text-ink hover:bg-sand-50">
               {label}
+              {href === "/rendez-vous" && pending > 0 && (
+                <span className="rounded-full bg-gold-500 px-1.5 text-xs font-bold text-navy-950">{pending}</span>
+              )}
             </Link>
           ))}
+          {isAdmin && (
+            <Link href="/admin" className="block border-t border-line px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-sand-50">
+              Administration
+            </Link>
+          )}
           <Link href="/agents" className="block px-4 py-2 text-sm text-ink hover:bg-sand-50 md:hidden">
             Annuaire des agents
           </Link>
