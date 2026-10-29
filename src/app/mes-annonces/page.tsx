@@ -11,6 +11,8 @@ import { deleteListing, setListingStatus, signOut } from "@/app/actions";
 
 export const metadata: Metadata = { title: "Mes annonces" };
 
+const expiryFormat = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", timeZone: "America/Port-au-Prince" });
+
 export default function MyListingsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
@@ -35,12 +37,12 @@ async function MyListings() {
 
   const { data, error } = await supabase
     .from("properties")
-    .select(PROPERTY_COLUMNS)
+    .select(`${PROPERTY_COLUMNS}, expires_at`)
     .eq("owner_id", auth.claims.sub)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error("Impossible de charger vos annonces.");
-  const listings = (data ?? []) as Property[];
+  const listings = (data ?? []) as (Property & { expires_at: string })[];
 
   if (listings.length === 0) {
     return (
@@ -74,13 +76,23 @@ async function MyListings() {
               </div>
               <p className="mt-1 truncate font-semibold text-ink">{p.title}</p>
               <p className="text-sm text-muted">{formatPrice(p)} · {locationLabel(p)}</p>
+              {!archived && (
+                <p className="mt-0.5 text-xs text-muted">En ligne jusqu&apos;au {expiryFormat.format(new Date(p.expires_at))}</p>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {!archived && <Link href={`/annonces/${p.id}`} className="btn-ghost !py-2 text-sm">Voir</Link>}
-              <form action={setListingStatus.bind(null, p.id, archived ? "publie" : "archive")}>
-                <button className="btn-ghost !py-2 text-sm">{archived ? "Remettre en ligne" : "Archiver"}</button>
+              <Link href={`/mes-annonces/${p.id}/modifier`} className="btn-ghost !py-2 text-sm">Modifier</Link>
+              {/* Remettre en ligne ou prolonger = 60 jours de plus */}
+              <form action={setListingStatus.bind(null, p.id, "publie")}>
+                <button className="btn-ghost !py-2 text-sm">{archived ? "Remettre en ligne" : "Prolonger"}</button>
               </form>
+              {!archived && (
+                <form action={setListingStatus.bind(null, p.id, "archive")}>
+                  <button className="btn-ghost !py-2 text-sm">Archiver</button>
+                </form>
+              )}
               {/* Confirmation sans JavaScript */}
               <details className="relative">
                 <summary className="btn-ghost cursor-pointer list-none !py-2 text-sm text-red-700">Supprimer</summary>

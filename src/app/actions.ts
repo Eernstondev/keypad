@@ -24,10 +24,10 @@ export async function signOut() {
   redirect("/");
 }
 
-// Appelée après une publication faite depuis le navigateur
-export async function refreshListings() {
+// Appelée après une publication ou une modification faite depuis le navigateur
+export async function refreshListings(propertyId?: string) {
   await requireUser();
-  invalidate();
+  invalidate(propertyId);
 }
 
 export type ReportResult = { ok: true } | { ok: false; error: "auth" | "duplicate" | "invalid" | "server" };
@@ -48,13 +48,10 @@ export async function reportProperty(propertyId: string, reason: string, details
   return { ok: true };
 }
 
+// Remettre en ligne prolonge aussi l'annonce de 60 jours (voir migration 002)
 export async function setListingStatus(propertyId: string, status: "publie" | "archive") {
-  const { supabase, userId } = await requireUser();
-  const { error } = await supabase
-    .from("properties")
-    .update({ status })
-    .eq("id", propertyId)
-    .eq("owner_id", userId);
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("set_listing_status", { p_property_id: propertyId, p_status: status });
   if (error) throw new Error("Impossible de modifier l'annonce.");
   invalidate(propertyId);
 }
