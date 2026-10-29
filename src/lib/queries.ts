@@ -2,7 +2,6 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import {
-  DEPARTMENTS,
   PROPERTY_TYPES,
   TRANSACTION_TYPES,
   type Currency,
@@ -24,13 +23,22 @@ export const PROPERTY_COLUMNS =
 export const PAGE_SIZE = 24;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export const SORTS = { recent: "Plus récentes", prix_asc: "Prix croissant", prix_desc: "Prix décroissant" } as const;
+export type SortKey = keyof typeof SORTS;
+
+// Zone visible de la carte (nord, sud, est, ouest)
+export type Bounds = { n: number; s: number; e: number; w: number };
+
 export type SearchFilters = {
+  q?: string;
   transaction?: TransactionType;
   type?: PropertyType;
-  department?: string;
-  commune?: string;
+  minPrice?: number;
   maxPrice?: number;
   currency?: Currency;
+  bedrooms?: number;
+  bounds?: Bounds;
+  sort: SortKey;
   page: number;
 };
 
@@ -42,24 +50,38 @@ export function parseFilters(params: RawParams): SearchFilters {
     const v = params[k];
     return (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
   };
-  const positive = (v?: string) => {
+  const num = (k: string) => {
+    const v = get(k);
     const n = Number(v);
-    return v && Number.isFinite(n) && n > 0 ? n : undefined;
+    return v !== undefined && Number.isFinite(n) ? n : undefined;
+  };
+  const positive = (k: string) => {
+    const n = num(k);
+    return n !== undefined && n > 0 ? n : undefined;
   };
 
   const transaction = get("transaction");
   const type = get("type");
-  const department = get("department");
   const currency = get("currency");
+  const sort = get("sort");
+  const bedrooms = positive("bedrooms");
+  const [n, s, e, w] = [num("n"), num("s"), num("e"), num("w")];
+  const validBounds =
+    n !== undefined && s !== undefined && e !== undefined && w !== undefined &&
+    n > s && e > w && n <= 90 && s >= -90 && e <= 180 && w >= -180;
 
   return {
+    // Retire les caractères qui ont un sens dans les filtres PostgREST
+    q: get("q")?.replace(/[,()*%_\\:"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || undefined,
     transaction: transaction && transaction in TRANSACTION_TYPES ? (transaction as TransactionType) : undefined,
     type: type && type in PROPERTY_TYPES ? (type as PropertyType) : undefined,
-    department: DEPARTMENTS.find((d) => d === department),
-    commune: get("commune")?.slice(0, 60),
-    maxPrice: positive(get("maxPrice")),
+    minPrice: positive("minPrice"),
+    maxPrice: positive("maxPrice"),
     currency: currency === "USD" || currency === "HTG" ? currency : undefined,
-    page: Math.min(Math.floor(positive(get("page")) ?? 1), 100),
+    bedrooms: bedrooms && Math.min(Math.floor(bedrooms), 10),
+    bounds: validBounds ? { n, s, e, w } : undefined,
+    sort: sort && sort in SORTS ? (sort as SortKey) : "recent",
+    page: Math.min(Math.floor(positive("page") ?? 1), 100),
   };
 }
 
@@ -73,17 +95,31 @@ export async function searchProperties(f: SearchFilters) {
     .select(PROPERTY_COLUMNS, { count: "exact" })
     .eq("status", "publie");
 
+  if (f.q) {
+    q = q.or(
+      ["commune", "neighborhood", "department", "title"].map((col) => `${col}.ilike.*${f.q}*`).join(","),
+    );
+  }
   if (f.transaction) q = q.eq("transaction_type", f.transaction);
   if (f.type) q = q.eq("property_type", f.type);
-  if (f.department) q = q.eq("department", f.department);
-  if (f.commune) q = q.ilike("commune", `%${f.commune.replace(/[\\%_]/g, "\\$&")}%`);
-  if (f.maxPrice) q = q.lte("price", f.maxPrice).eq("currency", f.currency ?? "HTG");
+  if (f.bedrooms) q = q.gte("bedrooms", f.bedrooms);
+  if (f.minPrice || f.maxPrice) {
+    q = q.eq("currency", f.currency ?? "HTG");
+    if (f.minPrice) q = q.gte("price", f.minPrice);
+    if (f.maxPrice) q = q.lte("price", f.maxPrice);
+  }
+  if (f.bounds) {
+    q = q.gte("lat", f.bounds.s).lte("lat", f.bounds.n).gte("lng", f.bounds.w).lte("lng", f.bounds.e);
+  }
+
+  q =
+    f.sort === "recent"
+      ? q.order("verified", { ascending: false }).order("created_at", { ascending: false })
+      : // price_htg (migration 004) : les prix USD sont convertis, le tri compare donc des montants équivalents
+        q.order("price_htg", { ascending: f.sort === "prix_asc" }).order("created_at", { ascending: false });
 
   const from = (f.page - 1) * PAGE_SIZE;
-  const { data, count, error } = await q
-    .order("verified", { ascending: false })
-    .order("created_at", { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+  const { data, count, error } = await q.range(from, from + PAGE_SIZE - 1);
 
   if (error) throw new Error(`Recherche impossible : ${error.message}`);
   return { items: (data ?? []) as Property[], total: count ?? 0 };

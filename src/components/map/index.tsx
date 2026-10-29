@@ -8,4 +8,4 @@ export const PropertyMap = dynamic(() => import("./leaflet-map"), {
   loading: () => <div className="h-full w-full animate-pulse bg-sand-100" />,
 });
 
-export type { MapMarker } from "./leaflet-map";
+export type { MapBounds, MapMarker } from "./leaflet-map";
