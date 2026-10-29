@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { AGENT_COLUMNS, whatsappLink, type Agent } from "@/lib/listings";
 import { CONTACT_WHATSAPP } from "@/lib/site";
@@ -33,7 +34,8 @@ async function AgentSpace() {
 
   const agent = data as Agent;
   const until = new Date(agent.active_until);
-  // Composant serveur rendu à chaque requête (session lue plus haut) : l'heure courante est voulue
+  // L'heure courante n'est lue qu'au moment de la requête (jamais au pré-rendu)
+  await connection();
   // eslint-disable-next-line react-hooks/purity
   const daysLeft = Math.ceil((until.getTime() - Date.now()) / 86_400_000);
   const active = daysLeft > 0;

@@ -15,13 +15,20 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
    - `supabase/migrations/005_favoris_stats_moderation.sql` (favoris, vues et clics WhatsApp, limite de 5 annonces par 24 h, archivage admin)
    - `supabase/migrations/006_agents_visites_vendus.sql` (agents immobiliers, demandes de visite, biens vendus / loués)
    - `supabase/migrations/007_notifications_email.sql` (e-mails automatiques des visites, désactivés tant que la clé n'est pas ajoutée)
-2. **Authentication → Email Templates → Magic Link** : remplacer le contenu par un message qui contient le code :
-   ```html
-   <h2>Votre code KayAyiti</h2>
-   <p>Entrez ce code pour vous connecter : <strong>{{ .Token }}</strong></p>
-   ```
-3. **Authentication → URL Configuration** : *Site URL* = l'URL du site (ex. `http://localhost:3000`, puis le domaine de production).
-4. **Authentication → SMTP** (production) : brancher un vrai fournisseur d'e-mails (Resend, Brevo…). Le service intégré de Supabase est limité à quelques e-mails par heure.
+2. **Authentication → Sign In / Providers → Email** : activer **Confirm email** (validation de l'adresse à l'inscription).
+3. **Authentication → Email Templates** : mettre le code dans deux modèles.
+   - **Confirm signup** :
+     ```html
+     <h2>Bienvenue sur KayAyiti</h2>
+     <p>Votre code de validation : <strong>{{ .Token }}</strong></p>
+     ```
+   - **Reset Password** :
+     ```html
+     <h2>Nouveau mot de passe</h2>
+     <p>Votre code : <strong>{{ .Token }}</strong></p>
+     ```
+4. **Authentication → URL Configuration** : *Site URL* = l'URL du site (ex. `http://localhost:3000`) et *Redirect URLs* = `http://localhost:3000/**` (puis le domaine de production).
+5. **Authentication → SMTP** (production) : brancher un vrai fournisseur d'e-mails (Resend, Brevo…). Le service intégré de Supabase est limité à quelques e-mails par heure.
 
 ## 2. Lancer en local
 

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { AGENT_COLUMNS, REPORT_REASONS, formatPrice, locationLabel, type Agent, type Property, type ReportReason } from "@/lib/listings";
 import { adminExtendAgent, adminRevokeAgent, adminSetListingStatus, setReportStatus, setVerified } from "@/app/actions";
@@ -56,7 +57,8 @@ async function AdminContent() {
   const reports = (reportsRes.data ?? []) as unknown as Report[];
   const properties = (propertiesRes.data ?? []) as Property[];
   const agents = (agentsRes.data ?? []) as Agent[];
-  // Composant serveur rendu à chaque requête (session lue plus haut) : l'heure courante est voulue
+  // L'heure courante n'est lue qu'au moment de la requête (jamais au pré-rendu)
+  await connection();
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
 
