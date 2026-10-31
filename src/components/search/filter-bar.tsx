@@ -13,11 +13,14 @@ import {
 } from "@/lib/listings";
 import type { SearchFilters } from "@/lib/queries";
 
-type Panel = "prix" | "chambres" | "capacite" | "type" | "equipements" | null;
+type Panel = "prix" | "chambres" | "capacite" | "dates" | "type" | "equipements" | null;
 type Go = (patch: Partial<SearchFilters>) => void;
 
 const BEDS = [1, 2, 3, 4, 5];
 const CAPACITIES = [10, 30, 50, 100, 200, 500];
+const GUESTS = [1, 2, 3, 4, 6, 8, 10];
+const dayLabel = (iso: string) =>
+  new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
 
 const chip = (active: boolean) =>
   `shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${
@@ -53,9 +56,10 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
 
   const hasFilters = Boolean(
     filters.q || filters.transaction || filters.type || priceActive || filters.bedrooms || filters.capacity ||
-      filters.amenities || filters.bounds,
+      filters.amenities || filters.checkIn || filters.bounds,
   );
   const spaces = filters.cat === "espaces";
+  const stays = filters.cat === "sejours";
   const typeChoices = (filters.cat ? CATEGORIES[filters.cat].types : Object.keys(PROPERTY_TYPES)) as PropertyType[];
   const amenities = filters.amenities ?? [];
 
@@ -66,6 +70,8 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
       type: cat && filters.type && !(CATEGORIES[cat].types as readonly PropertyType[]).includes(filters.type) ? undefined : filters.type,
       bedrooms: cat === "espaces" ? undefined : filters.bedrooms,
       capacity: cat === "logements" ? undefined : filters.capacity,
+      checkIn: cat === "sejours" ? filters.checkIn : undefined,
+      checkOut: cat === "sejours" ? filters.checkOut : undefined,
     });
 
   const toggleAmenity = (a: Amenity) => {
@@ -99,7 +105,7 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
         </form>
 
         <div className="flex shrink-0 rounded-full border border-line bg-sand-50 p-0.5">
-          {([undefined, "logements", "espaces"] as (Category | undefined)[]).map((c) => (
+          {([undefined, "logements", "sejours", "espaces"] as (Category | undefined)[]).map((c) => (
             <button
               key={c ?? "tout"}
               type="button"
@@ -108,7 +114,7 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
                 filters.cat === c ? "bg-white text-navy-900 shadow-sm" : "text-muted hover:text-ink"
               }`}
             >
-              {c ? (c === "logements" ? "Logements" : "Espaces") : "Tous les biens"}
+              {c ? { logements: "Logements", sejours: "Séjours", espaces: "Espaces" }[c] : "Tous les biens"}
             </button>
           ))}
         </div>
@@ -131,11 +137,17 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
         <button type="button" onClick={() => toggle("prix")} className={chip(priceActive || panel === "prix")}>
           {priceLabel}
         </button>
-        {spaces ? (
-          <button type="button" onClick={() => toggle("capacite")} className={chip(Boolean(filters.capacity) || panel === "capacite")}>
-            {filters.capacity ? `${filters.capacity}+ pers.` : "Capacité"}
+        {stays && (
+          <button type="button" onClick={() => toggle("dates")} className={chip(Boolean(filters.checkIn) || panel === "dates")}>
+            {filters.checkIn && filters.checkOut ? `${dayLabel(filters.checkIn)} → ${dayLabel(filters.checkOut)}` : "Dates"}
           </button>
-        ) : (
+        )}
+        {(spaces || stays) && (
+          <button type="button" onClick={() => toggle("capacite")} className={chip(Boolean(filters.capacity) || panel === "capacite")}>
+            {filters.capacity ? `${filters.capacity}+ ${stays ? "voyageurs" : "pers."}` : stays ? "Voyageurs" : "Capacité"}
+          </button>
+        )}
+        {!spaces && (
           <button type="button" onClick={() => toggle("chambres")} className={chip(Boolean(filters.bedrooms) || panel === "chambres")}>
             {filters.bedrooms ? `${filters.bedrooms}+ ch.` : "Chambres"}
           </button>
@@ -151,7 +163,7 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
           <button
             type="button"
             onClick={() =>
-              apply({ q: undefined, transaction: undefined, type: undefined, minPrice: undefined, maxPrice: undefined, currency: undefined, bedrooms: undefined, capacity: undefined, amenities: undefined, bounds: undefined })
+              apply({ q: undefined, transaction: undefined, type: undefined, minPrice: undefined, maxPrice: undefined, currency: undefined, bedrooms: undefined, capacity: undefined, amenities: undefined, checkIn: undefined, checkOut: undefined, bounds: undefined })
             }
             className="shrink-0 px-2 text-sm font-medium text-navy-700 hover:underline"
           >
@@ -193,13 +205,14 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
               <button type="button" onClick={() => apply({ capacity: undefined })} className={chip(!filters.capacity)}>
                 Toutes
               </button>
-              {CAPACITIES.map((n) => (
+              {(stays ? GUESTS : CAPACITIES).map((n) => (
                 <button key={n} type="button" onClick={() => apply({ capacity: n })} className={chip(filters.capacity === n)}>
-                  {n}+ personnes
+                  {n}+ {stays ? (n > 1 ? "voyageurs" : "voyageur") : "personnes"}
                 </button>
               ))}
             </div>
           )}
+          {panel === "dates" && <DatesPanel filters={filters} apply={apply} />}
           {panel === "equipements" && (
             <div className="flex flex-wrap gap-2">
               {(Object.entries(AMENITIES) as [Amenity, string][]).map(([a, l]) => (
@@ -212,6 +225,39 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Arrivée / départ : n'affiche que les séjours libres sur toute la période
+function DatesPanel({ filters, apply }: { filters: SearchFilters; apply: Go }) {
+  const [checkIn, setCheckIn] = useState(filters.checkIn ?? "");
+  // eslint-disable-next-line react-hooks/purity
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+
+  return (
+    <form
+      className="flex flex-wrap items-end gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        apply({ checkIn: String(form.get("arrivee")), checkOut: String(form.get("depart")) });
+      }}
+    >
+      <label className="w-40">
+        <span className="label">Arrivée</span>
+        <input name="arrivee" type="date" required min={today} value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="field" />
+      </label>
+      <label className="w-40">
+        <span className="label">Départ</span>
+        <input name="depart" type="date" required min={checkIn || today} defaultValue={filters.checkOut} className="field" />
+      </label>
+      <button className="btn-primary">Voir les logements libres</button>
+      {filters.checkIn && (
+        <button type="button" onClick={() => apply({ checkIn: undefined, checkOut: undefined })} className="btn-ghost">
+          Retirer les dates
+        </button>
+      )}
+    </form>
   );
 }
 

@@ -19,7 +19,8 @@ export function SiteHeader() {
         <nav className="mr-auto hidden items-center gap-1 pl-6 text-sm font-medium md:flex">
           <Link href="/?transaction=location" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Louer</Link>
           <Link href="/?transaction=vente" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Acheter</Link>
-          <Link href="/?cat=espaces" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Espaces &amp; événements</Link>
+          <Link href="/?cat=sejours" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Séjours</Link>
+          <Link href="/?cat=espaces" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Espaces</Link>
           <Link href="/agents" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Agents</Link>
         </nav>
 
@@ -55,19 +56,18 @@ async function UserNav() {
   const user = await getCurrentUser();
   if (!user) return <GuestNav />;
 
-  // Rôle (lien admin) et demandes de visite à traiter (pastille)
+  // Rôle (lien admin) et demandes de visite / réservation à traiter (pastille)
   const supabase = await createClient();
-  const [{ data: profile }, { count }] = await Promise.all([
+  const pendingFor = (table: "visit_requests" | "stay_requests") =>
+    supabase.from(table).select("id", { count: "exact", head: true }).eq("owner_id", user.id).eq("status", "en_attente");
+  const [{ data: profile }, visits, stays] = await Promise.all([
     supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
-    supabase
-      .from("visit_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", user.id)
-      .eq("status", "en_attente"),
+    pendingFor("visit_requests"),
+    pendingFor("stay_requests"),
   ]);
   const isAdmin = profile?.role === "admin";
   const isAgent = profile?.role === "agent";
-  const pending = count ?? 0;
+  const pending = (visits.count ?? 0) + (stays.count ?? 0);
 
   return (
     <nav className="flex items-center gap-2">

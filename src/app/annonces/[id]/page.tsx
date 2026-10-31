@@ -11,6 +11,7 @@ import {
   AMENITIES,
   PROPERTY_TYPES,
   isSpace,
+  isStay,
   TRANSACTION_TYPES,
   approxOtherCurrency,
   coverPath,
@@ -21,8 +22,9 @@ import {
   whatsappLink,
   type Property,
 } from "@/lib/listings";
-import { getProperty, getSimilarProperties } from "@/lib/queries";
+import { getBookedRanges, getProperty, getSimilarProperties } from "@/lib/queries";
 import { ShareButton, ViewTracker, WhatsAppButton } from "./listing-actions";
+import { StayBooking } from "./stay-booking";
 import { ReportForm } from "./report-form";
 import { VisitRequestForm } from "./visit-request-form";
 
@@ -50,10 +52,13 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
   const p = await getProperty((await params).id);
   if (!p) notFound();
 
+  const stay = isStay(p);
+  const booked = stay ? await getBookedRanges(p.id) : [];
   const photos = [...p.property_media].sort((a, b) => a.position - b.position);
   const specs = [
     ["Type", PROPERTY_TYPES[p.property_type]],
-    ["Capacité", p.capacity ? `${p.capacity} personnes` : null],
+    [stay ? "Voyageurs" : "Capacité", p.capacity ? `${p.capacity} ${stay ? "max" : "personnes"}` : null],
+    ["Séjour minimum", stay && p.min_nights && p.min_nights > 1 ? `${p.min_nights} nuits` : null],
     ["Chambres", p.bedrooms],
     [isSpace(p.property_type) ? "Toilettes" : "Salles de bain", p.bathrooms],
     ["Surface", p.area_m2 ? `${p.area_m2} m²` : null],
@@ -181,11 +186,30 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
               {approxOtherCurrency(p)} <span className="text-xs">(taux indicatif)</span>
             </p>
             {pricePerM2(p) && <p className="mt-0.5 text-sm text-muted">{pricePerM2(p)}</p>}
-            {p.is_demo ? (
+            {p.is_demo && (
               <p className="mt-4 rounded-xl bg-sand-100 px-5 py-3 text-center text-sm font-medium text-muted">
                 Annonce fictive, pas de contact
               </p>
-            ) : (
+            )}
+            {stay ? (
+              <>
+                {!p.is_demo && <WhatsAppButton propertyId={p.id} href={whatsappLink(p.whatsapp, message)} />}
+                <div className="mt-4">
+                  <StayBooking
+                    propertyId={p.id}
+                    price={p.price}
+                    currency={p.currency}
+                    minNights={p.min_nights ?? 1}
+                    maxGuests={p.capacity}
+                    booked={booked}
+                    isDemo={p.is_demo}
+                    listingTitle={p.title}
+                    contactWhatsapp={p.agent?.whatsapp ?? p.whatsapp}
+                    ownerLabel={p.agent ? "l'agent" : "l'hôte"}
+                  />
+                </div>
+              </>
+            ) : p.is_demo ? null : (
               <>
                 <WhatsAppButton propertyId={p.id} href={whatsappLink(p.whatsapp, message)} />
                 <div className="mt-3">
@@ -205,9 +229,19 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
           <div className="rounded-2xl border border-gold-500/40 bg-gold-100/60 p-5 text-sm">
             <p className="font-semibold text-navy-900">Avant de payer</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-ink/80">
-              <li>Visitez toujours le bien en personne.</li>
-              <li>Ne versez aucune avance avant la visite.</li>
-              <li>Pour un achat, faites vérifier le titre par un notaire.</li>
+              {stay ? (
+                <>
+                  <li>Attendez la confirmation de vos dates avant tout paiement.</li>
+                  <li>Payez de préférence à l&apos;arrivée, après avoir vu le logement.</li>
+                  <li>Méfiez-vous d&apos;un prix bien plus bas que les autres.</li>
+                </>
+              ) : (
+                <>
+                  <li>Visitez toujours le bien en personne.</li>
+                  <li>Ne versez aucune avance avant la visite.</li>
+                  <li>Pour un achat, faites vérifier le titre par un notaire.</li>
+                </>
+              )}
             </ul>
           </div>
 

@@ -29,6 +29,7 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
     .map((p) => ({ id: p.id, lat: p.lat!, lng: p.lng!, price: shortPrice(p), href: `/annonces/${p.id}` }));
 
   const noun = filters.cat === "espaces" ? "espaces" : filters.cat === "logements" ? "logements" : "biens";
+  const stays = filters.cat === "sejours";
   const label =
     filters.transaction === "location" ? `${noun} à louer` : filters.transaction === "vente" ? `${noun} à vendre` : "annonces";
 
@@ -44,6 +45,18 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
           }`}
         >
           <div className={`px-4 py-5 transition-opacity ${pending ? "opacity-50" : ""}`}>
+            {stays && (
+              <div className="mb-5 rounded-2xl border border-gold-500/30 bg-gold-100/60 px-5 py-4">
+                <p className="font-bold text-navy-900">Séjours courte durée</p>
+                <p className="mt-1 text-sm text-ink/80">
+                  Maisons et appartements à la nuit, pour un week-end, des vacances ou une visite au pays. Choisissez vos
+                  dates pour ne voir que les logements libres.
+                </p>
+                <Link href="/publier?periode=nuit" className="mt-2 inline-block text-sm font-semibold text-navy-700 underline">
+                  Louez votre logement à la nuit
+                </Link>
+              </div>
+            )}
             {filters.cat === "espaces" && (
               <div className="mb-5 rounded-2xl border border-gold-500/30 bg-gold-100/60 px-5 py-4">
                 <p className="font-bold text-navy-900">Espaces pro &amp; événements</p>
@@ -58,7 +71,7 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
             )}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted">
-                <span className="text-base font-bold text-navy-900">{total}</span> {label}
+                <span className="text-base font-bold text-navy-900">{total}</span> {stays ? (total > 1 ? "séjours" : "séjour") : label}
                 {filters.bounds && (
                   <button onClick={() => go({ bounds: undefined })} className="ml-2 rounded-full bg-navy-100 px-2.5 py-1 text-xs font-semibold text-navy-900">
                     Zone de la carte ✕

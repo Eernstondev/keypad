@@ -17,6 +17,8 @@ export function searchHref(filters: SearchFilters, patch: Partial<SearchFilters>
   set("type", f.type);
   set("capacity", f.capacity);
   set("amen", f.amenities?.join(","));
+  set("arrivee", f.checkIn);
+  set("depart", f.checkOut);
   set("minPrice", f.minPrice);
   set("maxPrice", f.maxPrice);
   if (f.minPrice || f.maxPrice) set("currency", f.currency);

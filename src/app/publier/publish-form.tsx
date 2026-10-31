@@ -67,13 +67,19 @@ export function PublishForm({
   requireLocation?: boolean; // agents : position sur la carte obligatoire
 }) {
   const router = useRouter();
-  const typeParam = useSearchParams().get("type");
+  const params = useSearchParams();
+  const [transaction, setTransaction] = useState<TransactionType>(initial?.transaction_type ?? "location");
+  const typeParam = params.get("type");
   const [type, setType] = useState<PropertyType>(
     initial?.property_type ?? (typeParam && typeParam in PROPERTY_TYPES ? (typeParam as PropertyType) : "maison"),
   );
   const space = isSpace(type);
-  const periods: PricePeriod[] = space ? ["heure", "jour", "mois", "annee"] : ["mois", "annee"];
-  const [transaction, setTransaction] = useState<TransactionType>(initial?.transaction_type ?? "location");
+  const periods: PricePeriod[] = space ? ["heure", "jour", "mois", "annee"] : ["annee", "mois", "nuit"];
+  const [periodChoice, setPeriod] = useState<PricePeriod | null>(
+    initial?.price_period ?? (params.get("periode") === "nuit" ? "nuit" : null),
+  );
+  const period: PricePeriod = periodChoice && periods.includes(periodChoice) ? periodChoice : space ? "jour" : "annee";
+  const stay = transaction === "location" && period === "nuit";
   const [existing, setExisting] = useState(() =>
     [...(initial?.property_media ?? [])].sort((a, b) => a.position - b.position),
   );
@@ -132,9 +138,10 @@ export function PublishForm({
       transaction_type: transaction,
       price: Number(form.get("price")),
       currency: form.get("currency"),
-      price_period: transaction === "location" ? form.get("price_period") : null,
+      price_period: transaction === "location" ? period : null,
       bedrooms: space ? null : numberOrNull(form.get("bedrooms")),
-      capacity: space ? numberOrNull(form.get("capacity")) : null,
+      capacity: space || stay ? numberOrNull(form.get("capacity")) : null,
+      min_nights: stay ? numberOrNull(form.get("min_nights")) : null,
       amenities: form.getAll("amenities").map(String),
       bathrooms: numberOrNull(form.get("bathrooms")),
       area_m2: numberOrNull(form.get("area_m2")),
@@ -246,12 +253,19 @@ export function PublishForm({
             <input id="area_m2" name="area_m2" type="number" min={1} step="any" inputMode="decimal" className="field"
               defaultValue={initial?.area_m2 ?? undefined} />
           </Field>
-          {space ? (
-            <Field label="Capacité (personnes)" htmlFor="capacity">
-              <input id="capacity" name="capacity" type="number" min={1} max={20000} inputMode="numeric" className="field"
-                defaultValue={initial?.capacity ?? undefined} placeholder="150" />
+          {(space || stay) && (
+            <Field label={stay ? "Voyageurs maximum" : "Capacité (personnes)"} htmlFor="capacity">
+              <input id="capacity" name="capacity" type="number" min={1} max={stay ? 50 : 20000} inputMode="numeric" className="field"
+                defaultValue={initial?.capacity ?? undefined} placeholder={stay ? "4" : "150"} />
             </Field>
-          ) : (
+          )}
+          {stay && (
+            <Field label="Nuits minimum" htmlFor="min_nights">
+              <input id="min_nights" name="min_nights" type="number" min={1} max={30} inputMode="numeric" className="field"
+                defaultValue={initial?.min_nights ?? 1} />
+            </Field>
+          )}
+          {!space && (
             <Field label="Chambres" htmlFor="bedrooms">
               <input id="bedrooms" name="bedrooms" type="number" min={0} max={50} inputMode="numeric" className="field"
                 defaultValue={initial?.bedrooms ?? undefined} />
@@ -301,8 +315,8 @@ export function PublishForm({
           </Field>
           {transaction === "location" && (
             <Field label="Période" htmlFor="price_period">
-              <select key={space ? "espace" : "logement"} id="price_period" name="price_period" className="field"
-                defaultValue={initial?.price_period && periods.includes(initial.price_period) ? initial.price_period : space ? "jour" : "annee"}>
+              <select id="price_period" name="price_period" className="field"
+                value={period} onChange={(e) => setPeriod(e.target.value as PricePeriod)}>
                 {periods.map((v) => (
                   <option key={v} value={v}>{PRICE_PERIODS[v]}</option>
                 ))}

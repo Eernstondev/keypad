@@ -3,8 +3,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { VISIT_STATUS, VISIT_TIMES, whatsappLink, type VisitStatus, type VisitTime } from "@/lib/listings";
-import { OwnerVisitActions, RequesterCancel } from "./visit-actions";
+import {
+  STAY_STATUS,
+  VISIT_STATUS,
+  VISIT_TIMES,
+  nightsBetween,
+  whatsappLink,
+  type StayStatus,
+  type VisitStatus,
+  type VisitTime,
+} from "@/lib/listings";
+import { GuestStayCancel, OwnerStayActions, OwnerVisitActions, RequesterCancel } from "./visit-actions";
 
 export const metadata: Metadata = { title: "Rendez-vous", robots: { index: false } };
 
@@ -38,6 +47,22 @@ const STATUS_STYLE: Record<VisitStatus, string> = {
 
 const ACTIVE: VisitStatus[] = ["en_attente", "confirmee"];
 
+type Stay = {
+  id: string;
+  property_id: string;
+  name: string;
+  phone: string;
+  check_in: string;
+  check_out: string;
+  guests: number;
+  message: string | null;
+  status: StayStatus;
+  owner_note: string | null;
+  owner_id: string;
+  requester_id: string;
+  properties: { title: string; commune: string } | null;
+};
+
 export default function VisitsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
@@ -56,14 +81,27 @@ async function Visits() {
   const userId = auth.claims.sub;
 
   // userId vient du jeton vérifié (UUID) ; la RLS limite de toute façon aux deux parties
-  const { data, error } = await supabase
-    .from("visit_requests")
-    .select("id, property_id, name, phone, preferred_date, preferred_time, message, status, scheduled_at, owner_note, owner_id, requester_id, properties(title, commune)")
-    .or(`owner_id.eq.${userId},requester_id.eq.${userId}`)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const [{ data, error }, staysRes] = await Promise.all([
+    supabase
+      .from("visit_requests")
+      .select("id, property_id, name, phone, preferred_date, preferred_time, message, status, scheduled_at, owner_note, owner_id, requester_id, properties(title, commune)")
+      .or(`owner_id.eq.${userId},requester_id.eq.${userId}`)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("stay_requests")
+      .select("id, property_id, name, phone, check_in, check_out, guests, message, status, owner_note, owner_id, requester_id, properties(title, commune)")
+      .or(`owner_id.eq.${userId},requester_id.eq.${userId}`)
+      .order("check_in", { ascending: true })
+      .limit(200),
+  ]);
 
-  if (error) throw new Error("Impossible de charger vos rendez-vous.");
+  if (error || staysRes.error) throw new Error("Impossible de charger vos rendez-vous.");
+  const stays = (staysRes.data ?? []) as unknown as Stay[];
+  const stayActive = (s: Stay) => s.status === "en_attente" || s.status === "confirmee";
+  const byStay = (a: Stay, b: Stay) => Number(stayActive(b)) - Number(stayActive(a));
+  const staysReceived = stays.filter((s) => s.owner_id === userId).sort(byStay);
+  const staysMine = stays.filter((s) => s.requester_id === userId).sort(byStay);
   const visits = (data ?? []) as unknown as Visit[];
 
   // Demandes à traiter en premier, puis l'historique
@@ -73,6 +111,33 @@ async function Visits() {
 
   return (
     <div className="mt-8 space-y-12">
+      {staysReceived.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold text-navy-900">
+            Réservations reçues
+            <span className="ml-2 text-sm font-medium text-muted">
+              {staysReceived.filter((s) => s.status === "en_attente").length} en attente
+            </span>
+          </h2>
+          <ul className="mt-4 space-y-3">
+            {staysReceived.map((s) => (
+              <StayItem key={s.id} stay={s} side="owner" />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {staysMine.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold text-navy-900">Mes séjours</h2>
+          <ul className="mt-4 space-y-3">
+            {staysMine.map((s) => (
+              <StayItem key={s.id} stay={s} side="guest" />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {received.length > 0 && (
         <section>
           <h2 className="text-lg font-bold text-navy-900">
@@ -173,6 +238,72 @@ function VisitItem({ visit: v, side }: { visit: Visit; side: "owner" | "requeste
         </>
       )}
       {side === "requester" && ACTIVE.includes(v.status) && <RequesterCancel id={v.id} />}
+    </li>
+  );
+}
+
+function StayItem({ stay: s, side }: { stay: Stay; side: "owner" | "guest" }) {
+  const title = s.properties?.title ?? "Annonce retirée";
+  const nights = nightsBetween(s.check_in, s.check_out);
+  const day = (d: string) => dayFormat.format(new Date(`${d}T12:00:00Z`));
+  const active = s.status === "en_attente" || s.status === "confirmee";
+  const replyMessage = `Bonjour ${s.name}, je vous contacte au sujet de votre réservation pour « ${title} » sur KayAyiti.`;
+
+  return (
+    <li className="rounded-2xl border border-line bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          {s.properties ? (
+            <Link href={`/annonces/${s.property_id}`} className="font-semibold text-ink hover:underline">{title}</Link>
+          ) : (
+            <p className="font-semibold text-muted">{title}</p>
+          )}
+          {s.properties && <p className="text-sm text-muted">{s.properties.commune}</p>}
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[s.status]}`}>
+          {STAY_STATUS[s.status]}
+        </span>
+      </div>
+
+      <dl className="mt-3 grid gap-1 text-sm">
+        <div>
+          <dt className="inline text-muted">Séjour : </dt>
+          <dd className="inline font-semibold text-navy-900">
+            du {day(s.check_in)} au {day(s.check_out)} · {nights} nuit{nights > 1 ? "s" : ""} · {s.guests} voyageur{s.guests > 1 ? "s" : ""}
+          </dd>
+        </div>
+        {side === "owner" && (
+          <div>
+            <dt className="inline text-muted">Voyageur : </dt>
+            <dd className="inline text-ink">{s.name} · {s.phone}</dd>
+          </div>
+        )}
+        {s.message && (
+          <div>
+            <dt className="inline text-muted">Message : </dt>
+            <dd className="inline text-ink">{s.message}</dd>
+          </div>
+        )}
+        {s.owner_note && (
+          <div>
+            <dt className="inline text-muted">Note : </dt>
+            <dd className="inline text-ink">{s.owner_note}</dd>
+          </div>
+        )}
+      </dl>
+
+      {side === "owner" && active && (
+        <>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm">
+            <a href={whatsappLink(s.phone, replyMessage)} target="_blank" rel="noopener noreferrer" className="font-medium text-navy-700 hover:underline">
+              Écrire sur WhatsApp
+            </a>
+            <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="font-medium text-navy-700 hover:underline">Appeler</a>
+          </div>
+          <OwnerStayActions id={s.id} status={s.status as "en_attente" | "confirmee"} />
+        </>
+      )}
+      {side === "guest" && active && <GuestStayCancel id={s.id} />}
     </li>
   );
 }

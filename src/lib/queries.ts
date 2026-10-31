@@ -6,6 +6,7 @@ import {
   AMENITIES,
   CATEGORIES,
   PROPERTY_TYPES,
+  nightsBetween,
   type Amenity,
   type Category,
   type Agent,
@@ -24,7 +25,7 @@ function publicClient() {
 }
 
 export const PROPERTY_COLUMNS =
-  "id, owner_id, title, description, property_type, transaction_type, price, currency, price_period, bedrooms, bathrooms, area_m2, capacity, amenities, department, commune, neighborhood, address_hint, lat, lng, whatsapp, status, verified, is_demo, created_at, property_media(storage_path, position)";
+  "id, owner_id, title, description, property_type, transaction_type, price, currency, price_period, bedrooms, bathrooms, area_m2, capacity, min_nights, amenities, department, commune, neighborhood, address_hint, lat, lng, whatsapp, status, verified, is_demo, created_at, property_media(storage_path, position)";
 
 export const PAGE_SIZE = 24;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,6 +43,8 @@ export type SearchFilters = {
   type?: PropertyType;
   capacity?: number; // personnes accueillies (espaces)
   amenities?: Amenity[];
+  checkIn?: string; // AAAA-MM-JJ, séjours uniquement
+  checkOut?: string;
   minPrice?: number;
   maxPrice?: number;
   currency?: Currency;
@@ -52,6 +55,8 @@ export type SearchFilters = {
 };
 
 type RawParams = Record<string, string | string[] | undefined>;
+
+const isIsoDate = (v?: string) => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
 
 // Valide les paramètres d'URL : toute valeur inconnue est ignorée.
 export function parseFilters(params: RawParams): SearchFilters {
@@ -76,6 +81,9 @@ export function parseFilters(params: RawParams): SearchFilters {
   const bedrooms = positive("bedrooms");
   const cat = get("cat");
   const capacity = positive("capacity");
+  const [checkIn, checkOut] = [get("arrivee"), get("depart")];
+  const validStay = isIsoDate(checkIn) && isIsoDate(checkOut) && nightsBetween(checkIn!, checkOut!) >= 1 &&
+    nightsBetween(checkIn!, checkOut!) <= 90;
   const amenities = [...new Set((get("amen") ?? "").split(","))].filter((a): a is Amenity => a in AMENITIES);
   const [n, s, e, w] = [num("n"), num("s"), num("e"), num("w")];
   const validBounds =
@@ -90,6 +98,8 @@ export function parseFilters(params: RawParams): SearchFilters {
     type: type && type in PROPERTY_TYPES ? (type as PropertyType) : undefined,
     capacity: capacity && Math.min(Math.floor(capacity), 20000),
     amenities: amenities.length ? amenities : undefined,
+    checkIn: validStay ? checkIn : undefined,
+    checkOut: validStay ? checkOut : undefined,
     minPrice: positive("minPrice"),
     maxPrice: positive("maxPrice"),
     currency: currency === "USD" || currency === "HTG" ? currency : undefined,
@@ -118,6 +128,13 @@ export async function searchProperties(f: SearchFilters) {
   if (f.transaction) q = q.eq("transaction_type", f.transaction);
   if (f.type) q = q.eq("property_type", f.type);
   else if (f.cat) q = q.in("property_type", [...CATEGORIES[f.cat].types]);
+  if (f.cat === "sejours" || f.checkIn) q = q.eq("transaction_type", "location").eq("price_period", "nuit");
+  if (f.checkIn && f.checkOut) {
+    // Exclut les logements déjà réservés (réservations confirmées) sur ces dates
+    const { data: busy } = await publicClient().rpc("stay_unavailable", { p_from: f.checkIn, p_to: f.checkOut });
+    const ids = (busy ?? []) as string[];
+    if (ids.length) q = q.not("id", "in", `(${ids.join(",")})`);
+  }
   if (f.capacity) q = q.gte("capacity", f.capacity);
   if (f.amenities) q = q.contains("amenities", f.amenities);
   if (f.bedrooms) q = q.gte("bedrooms", f.bedrooms);
@@ -141,6 +158,15 @@ export async function searchProperties(f: SearchFilters) {
 
   if (error) throw new Error(`Recherche impossible : ${error.message}`);
   return { items: await attachAgents((data ?? []) as Property[]), total: count ?? 0 };
+}
+
+// Périodes réservées (confirmées) d'un séjour, sans données personnelles
+export async function getBookedRanges(propertyId: string) {
+  "use cache";
+  cacheTag("stays");
+  cacheLife("minutes");
+  const { data } = await publicClient().rpc("stay_booked_ranges", { p_property_id: propertyId });
+  return (data ?? []) as { check_in: string; check_out: string }[];
 }
 
 // Même type de transaction, même commune d'abord, puis même département

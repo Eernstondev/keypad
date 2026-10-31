@@ -167,6 +167,45 @@ export async function cancelVisit(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// ───────────── Séjours (réservations à la nuit) ─────────────
+
+export async function requestStay(propertyId: string, form: FormData): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims) return { ok: false, error: "Connectez-vous pour réserver." };
+
+  const { error } = await supabase.from("stay_requests").insert({
+    property_id: propertyId,
+    name: String(form.get("name") ?? "").trim().slice(0, 80),
+    phone: String(form.get("phone") ?? "").trim(),
+    check_in: String(form.get("check_in") ?? ""),
+    check_out: String(form.get("check_out") ?? ""),
+    guests: Number(form.get("guests")) || 1,
+    message: String(form.get("message") ?? "").trim().slice(0, 500) || null,
+  });
+
+  if (error) return dbError(error, "Demande refusée : vérifiez vos dates, votre nom et votre numéro.");
+  return { ok: true };
+}
+
+export async function respondStay(id: string, status: "confirmee" | "refusee", note: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("respond_stay", { p_id: id, p_status: status, p_note: note.trim() || null });
+  if (error) return dbError(error, "Action impossible.");
+  updateTag("stays"); // calendrier public des disponibilités
+  refresh();
+  return { ok: true };
+}
+
+export async function cancelStay(id: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("cancel_stay", { p_id: id });
+  if (error) return dbError(error, "Annulation impossible.");
+  updateTag("stays");
+  refresh();
+  return { ok: true };
+}
+
 export async function adminGrantAgent(_prev: ActionResult | null, form: FormData): Promise<ActionResult> {
   const { supabase } = await requireUser();
   const email = String(form.get("email") ?? "").trim();

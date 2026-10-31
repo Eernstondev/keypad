@@ -9,7 +9,7 @@ export type PropertyType =
   | "entrepot";
 export type TransactionType = "location" | "vente";
 export type Currency = "HTG" | "USD";
-export type PricePeriod = "heure" | "jour" | "mois" | "annee";
+export type PricePeriod = "nuit" | "heure" | "jour" | "mois" | "annee";
 
 export type PropertyMedia = { storage_path: string; position: number };
 
@@ -26,7 +26,8 @@ export type Property = {
   bedrooms: number | null;
   bathrooms: number | null;
   area_m2: number | null;
-  capacity: number | null;
+  capacity: number | null; // personnes accueillies (espace) ou voyageurs max (séjour)
+  min_nights: number | null;
   amenities: Amenity[];
   department: string;
   commune: string;
@@ -99,13 +100,31 @@ export const PROPERTY_TYPES: Record<PropertyType, string> = {
 // Rubriques de recherche : « logements » et « espaces » (business, événements, stockage)
 export const CATEGORIES = {
   logements: { label: "Logements", types: ["maison", "appartement", "chambre"] },
+  sejours: { label: "Séjours", types: ["maison", "appartement", "chambre"] }, // location à la nuit uniquement
   espaces: { label: "Espaces pro & événements", types: ["espace_evenementiel", "bureau", "local_commercial", "entrepot"] },
 } as const satisfies Record<string, { label: string; types: PropertyType[] }>;
 export type Category = keyof typeof CATEGORIES;
 
 export const isSpace = (t: PropertyType) => (CATEGORIES.espaces.types as readonly PropertyType[]).includes(t);
 
+// Séjour courte durée (façon Airbnb) : réservable avec des dates
+export const isStay = (p: Pick<Property, "transaction_type" | "price_period">) =>
+  p.transaction_type === "location" && p.price_period === "nuit";
+
+// Nombre de nuits entre deux dates AAAA-MM-JJ
+export const nightsBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+
+export const STAY_STATUS = {
+  en_attente: "En attente",
+  confirmee: "Confirmée",
+  refusee: "Refusée",
+  annulee: "Annulée",
+} as const;
+export type StayStatus = keyof typeof STAY_STATUS;
+
 export const PRICE_PERIODS: Record<PricePeriod, string> = {
+  nuit: "Par nuit (séjour)",
   heure: "Par heure",
   jour: "Par jour",
   mois: "Par mois",
@@ -188,7 +207,7 @@ export function pricePerM2(p: Pick<Property, "price" | "currency" | "area_m2" | 
 export function formatPrice(p: Pick<Property, "price" | "currency" | "price_period">) {
   const amount = numberFormat.format(p.price);
   const value = p.currency === "USD" ? `${amount} $ US` : `${amount} HTG`;
-  const suffix = { heure: " / heure", jour: " / jour", mois: " / mois", annee: " / an" } as const;
+  const suffix = { nuit: " / nuit", heure: " / heure", jour: " / jour", mois: " / mois", annee: " / an" } as const;
   return p.price_period ? `${value}${suffix[p.price_period]}` : value;
 }
 

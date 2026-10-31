@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { cancelVisit, respondVisit, type ActionResult } from "@/app/actions";
+import { cancelStay, cancelVisit, respondStay, respondVisit, type ActionResult } from "@/app/actions";
 
 function useAction() {
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +76,36 @@ export function RequesterCancel({ id }: { id: string }) {
     <div className="mt-3">
       <button type="button" disabled={pending} onClick={() => run(() => cancelVisit(id))} className="btn-ghost !py-2 text-sm text-red-700">
         {pending ? "…" : "Annuler ma demande"}
+      </button>
+      {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
+    </div>
+  );
+}
+
+// Réservation reçue : confirmer ou refuser (une réservation confirmée peut être annulée)
+export function OwnerStayActions({ id, status }: { id: string; status: "en_attente" | "confirmee" }) {
+  const { error, pending, run } = useAction();
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      {status === "en_attente" && (
+        <button type="button" disabled={pending} onClick={() => run(() => respondStay(id, "confirmee", ""))} className="btn-primary !py-2 text-sm">
+          Confirmer les dates
+        </button>
+      )}
+      <button type="button" disabled={pending} onClick={() => run(() => respondStay(id, "refusee", ""))} className="btn-ghost !py-2 text-sm text-red-700">
+        {status === "en_attente" ? "Refuser" : "Annuler la réservation"}
+      </button>
+      {error && <p className="w-full text-sm text-red-700">{error}</p>}
+    </div>
+  );
+}
+
+export function GuestStayCancel({ id }: { id: string }) {
+  const { error, pending, run } = useAction();
+  return (
+    <div className="mt-3">
+      <button type="button" disabled={pending} onClick={() => run(() => cancelStay(id))} className="btn-ghost !py-2 text-sm text-red-700">
+        {pending ? "…" : "Annuler ma réservation"}
       </button>
       {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
     </div>

@@ -18,6 +18,8 @@ Plateforme d'annonces immobilières pour Haïti : location, vente, terrains. Con
    - `supabase/migrations/008_emplacement_agents.sql` (position sur la carte obligatoire pour les annonces d'agents)
    - `supabase/migrations/009_espaces.sql` (espaces pro et événementiels, capacité, équipements, location à l'heure/jour) — seul, puis
    - `supabase/migrations/010_espaces_demo.sql` (4 espaces de démonstration)
+   - `supabase/migrations/011_sejours.sql` (séjours à la nuit, réservations avec dates, calendrier) — seul, puis
+   - `supabase/migrations/012_sejours_demo.sql` (2 séjours de démonstration)
 2. **Authentication → Sign In / Providers → Email** : activer **Confirm email** (validation de l'adresse à l'inscription).
 3. **Authentication → Email Templates** : mettre le code dans deux modèles.
    - **Confirm signup** :
