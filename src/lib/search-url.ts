@@ -13,7 +13,10 @@ export function searchHref(filters: SearchFilters, patch: Partial<SearchFilters>
 
   set("q", f.q);
   set("transaction", f.transaction);
+  set("cat", f.cat);
   set("type", f.type);
+  set("capacity", f.capacity);
+  set("amen", f.amenities?.join(","));
   set("minPrice", f.minPrice);
   set("maxPrice", f.maxPrice);
   if (f.minPrice || f.maxPrice) set("currency", f.currency);

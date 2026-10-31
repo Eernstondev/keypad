@@ -3,7 +3,11 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import {
   AGENT_COLUMNS,
+  AMENITIES,
+  CATEGORIES,
   PROPERTY_TYPES,
+  type Amenity,
+  type Category,
   type Agent,
   TRANSACTION_TYPES,
   type Currency,
@@ -20,7 +24,7 @@ function publicClient() {
 }
 
 export const PROPERTY_COLUMNS =
-  "id, owner_id, title, description, property_type, transaction_type, price, currency, price_period, bedrooms, bathrooms, area_m2, department, commune, neighborhood, address_hint, lat, lng, whatsapp, status, verified, is_demo, created_at, property_media(storage_path, position)";
+  "id, owner_id, title, description, property_type, transaction_type, price, currency, price_period, bedrooms, bathrooms, area_m2, capacity, amenities, department, commune, neighborhood, address_hint, lat, lng, whatsapp, status, verified, is_demo, created_at, property_media(storage_path, position)";
 
 export const PAGE_SIZE = 24;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,7 +38,10 @@ export type Bounds = { n: number; s: number; e: number; w: number };
 export type SearchFilters = {
   q?: string;
   transaction?: TransactionType;
+  cat?: Category;
   type?: PropertyType;
+  capacity?: number; // personnes accueillies (espaces)
+  amenities?: Amenity[];
   minPrice?: number;
   maxPrice?: number;
   currency?: Currency;
@@ -67,6 +74,9 @@ export function parseFilters(params: RawParams): SearchFilters {
   const currency = get("currency");
   const sort = get("sort");
   const bedrooms = positive("bedrooms");
+  const cat = get("cat");
+  const capacity = positive("capacity");
+  const amenities = [...new Set((get("amen") ?? "").split(","))].filter((a): a is Amenity => a in AMENITIES);
   const [n, s, e, w] = [num("n"), num("s"), num("e"), num("w")];
   const validBounds =
     n !== undefined && s !== undefined && e !== undefined && w !== undefined &&
@@ -76,7 +86,10 @@ export function parseFilters(params: RawParams): SearchFilters {
     // Retire les caractères qui ont un sens dans les filtres PostgREST
     q: get("q")?.replace(/[,()*%_\\:"']/g, " ").replace(/\s+/g, " ").trim().slice(0, 60) || undefined,
     transaction: transaction && transaction in TRANSACTION_TYPES ? (transaction as TransactionType) : undefined,
+    cat: cat && cat in CATEGORIES ? (cat as Category) : undefined,
     type: type && type in PROPERTY_TYPES ? (type as PropertyType) : undefined,
+    capacity: capacity && Math.min(Math.floor(capacity), 20000),
+    amenities: amenities.length ? amenities : undefined,
     minPrice: positive("minPrice"),
     maxPrice: positive("maxPrice"),
     currency: currency === "USD" || currency === "HTG" ? currency : undefined,
@@ -104,6 +117,9 @@ export async function searchProperties(f: SearchFilters) {
   }
   if (f.transaction) q = q.eq("transaction_type", f.transaction);
   if (f.type) q = q.eq("property_type", f.type);
+  else if (f.cat) q = q.in("property_type", [...CATEGORIES[f.cat].types]);
+  if (f.capacity) q = q.gte("capacity", f.capacity);
+  if (f.amenities) q = q.contains("amenities", f.amenities);
   if (f.bedrooms) q = q.gte("bedrooms", f.bedrooms);
   if (f.minPrice || f.maxPrice) {
     q = q.eq("currency", f.currency ?? "HTG");

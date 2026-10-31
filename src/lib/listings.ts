@@ -1,7 +1,15 @@
-export type PropertyType = "maison" | "appartement" | "terrain" | "local_commercial" | "chambre";
+export type PropertyType =
+  | "maison"
+  | "appartement"
+  | "chambre"
+  | "terrain"
+  | "local_commercial"
+  | "bureau"
+  | "espace_evenementiel"
+  | "entrepot";
 export type TransactionType = "location" | "vente";
 export type Currency = "HTG" | "USD";
-export type PricePeriod = "mois" | "annee";
+export type PricePeriod = "heure" | "jour" | "mois" | "annee";
 
 export type PropertyMedia = { storage_path: string; position: number };
 
@@ -18,6 +26,8 @@ export type Property = {
   bedrooms: number | null;
   bathrooms: number | null;
   area_m2: number | null;
+  capacity: number | null;
+  amenities: Amenity[];
   department: string;
   commune: string;
   neighborhood: string | null;
@@ -78,10 +88,44 @@ export function initials(name: string) {
 export const PROPERTY_TYPES: Record<PropertyType, string> = {
   maison: "Maison",
   appartement: "Appartement",
+  chambre: "Chambre",
   terrain: "Terrain",
   local_commercial: "Local commercial",
-  chambre: "Chambre",
+  bureau: "Bureau / salle de réunion",
+  espace_evenementiel: "Salle d'événements",
+  entrepot: "Entrepôt / dépôt",
 };
+
+// Rubriques de recherche : « logements » et « espaces » (business, événements, stockage)
+export const CATEGORIES = {
+  logements: { label: "Logements", types: ["maison", "appartement", "chambre"] },
+  espaces: { label: "Espaces pro & événements", types: ["espace_evenementiel", "bureau", "local_commercial", "entrepot"] },
+} as const satisfies Record<string, { label: string; types: PropertyType[] }>;
+export type Category = keyof typeof CATEGORIES;
+
+export const isSpace = (t: PropertyType) => (CATEGORIES.espaces.types as readonly PropertyType[]).includes(t);
+
+export const PRICE_PERIODS: Record<PricePeriod, string> = {
+  heure: "Par heure",
+  jour: "Par jour",
+  mois: "Par mois",
+  annee: "Par an",
+};
+
+// Doit correspondre à la contrainte amenities_known (migration 009)
+export const AMENITIES = {
+  generatrice: "Génératrice / inverter",
+  climatisation: "Climatisation",
+  wifi: "Internet / Wi-Fi",
+  parking: "Parking",
+  securite: "Gardien / sécurité",
+  eau: "Citerne / réservoir",
+  sono: "Sonorisation",
+  cuisine: "Cuisine équipée",
+  meuble: "Meublé",
+  piscine: "Piscine",
+} as const;
+export type Amenity = keyof typeof AMENITIES;
 
 export const TRANSACTION_TYPES: Record<TransactionType, string> = {
   location: "À louer",
@@ -144,9 +188,8 @@ export function pricePerM2(p: Pick<Property, "price" | "currency" | "area_m2" | 
 export function formatPrice(p: Pick<Property, "price" | "currency" | "price_period">) {
   const amount = numberFormat.format(p.price);
   const value = p.currency === "USD" ? `${amount} $ US` : `${amount} HTG`;
-  if (p.price_period === "mois") return `${value} / mois`;
-  if (p.price_period === "annee") return `${value} / an`;
-  return value;
+  const suffix = { heure: " / heure", jour: " / jour", mois: " / mois", annee: " / an" } as const;
+  return p.price_period ? `${value}${suffix[p.price_period]}` : value;
 }
 
 // Prix compact pour les étiquettes de la carte : « 450K HTG », « 1,2K $ »

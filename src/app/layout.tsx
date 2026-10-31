@@ -1,15 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import { FavoritesProvider } from "@/components/favorites";
 import { SiteHeader } from "@/components/site-header";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
-});
+const jakarta = { variable: "" };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

@@ -1,13 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PROPERTY_TYPES, type Currency, type PropertyType, type TransactionType } from "@/lib/listings";
+import {
+  AMENITIES,
+  CATEGORIES,
+  PROPERTY_TYPES,
+  type Amenity,
+  type Category,
+  type Currency,
+  type PropertyType,
+  type TransactionType,
+} from "@/lib/listings";
 import type { SearchFilters } from "@/lib/queries";
 
-type Panel = "prix" | "chambres" | "type" | null;
+type Panel = "prix" | "chambres" | "capacite" | "type" | "equipements" | null;
 type Go = (patch: Partial<SearchFilters>) => void;
 
 const BEDS = [1, 2, 3, 4, 5];
+const CAPACITIES = [10, 30, 50, 100, 200, 500];
 
 const chip = (active: boolean) =>
   `shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${
@@ -42,8 +52,26 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
         : `Jusqu'à ${amount.format(filters.maxPrice!)} ${cur}`;
 
   const hasFilters = Boolean(
-    filters.q || filters.transaction || filters.type || priceActive || filters.bedrooms || filters.bounds,
+    filters.q || filters.transaction || filters.type || priceActive || filters.bedrooms || filters.capacity ||
+      filters.amenities || filters.bounds,
   );
+  const spaces = filters.cat === "espaces";
+  const typeChoices = (filters.cat ? CATEGORIES[filters.cat].types : Object.keys(PROPERTY_TYPES)) as PropertyType[];
+  const amenities = filters.amenities ?? [];
+
+  // Changer de rubrique retire les filtres qui n'ont plus de sens (chambres pour une salle, etc.)
+  const setCategory = (cat: Category | undefined) =>
+    apply({
+      cat,
+      type: cat && filters.type && !(CATEGORIES[cat].types as readonly PropertyType[]).includes(filters.type) ? undefined : filters.type,
+      bedrooms: cat === "espaces" ? undefined : filters.bedrooms,
+      capacity: cat === "logements" ? undefined : filters.capacity,
+    });
+
+  const toggleAmenity = (a: Amenity) => {
+    const next = amenities.includes(a) ? amenities.filter((x) => x !== a) : [...amenities, a];
+    go({ amenities: next.length ? next : undefined }); // le panneau reste ouvert pour cocher plusieurs cases
+  };
 
   return (
     <div className="border-b border-line bg-white">
@@ -71,6 +99,21 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
         </form>
 
         <div className="flex shrink-0 rounded-full border border-line bg-sand-50 p-0.5">
+          {([undefined, "logements", "espaces"] as (Category | undefined)[]).map((c) => (
+            <button
+              key={c ?? "tout"}
+              type="button"
+              onClick={() => setCategory(c)}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                filters.cat === c ? "bg-white text-navy-900 shadow-sm" : "text-muted hover:text-ink"
+              }`}
+            >
+              {c ? (c === "logements" ? "Logements" : "Espaces") : "Tous les biens"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex shrink-0 rounded-full border border-line bg-sand-50 p-0.5">
           {([undefined, "location", "vente"] as (TransactionType | undefined)[]).map((t) => (
             <button
               key={t ?? "tout"}
@@ -88,18 +131,27 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
         <button type="button" onClick={() => toggle("prix")} className={chip(priceActive || panel === "prix")}>
           {priceLabel}
         </button>
-        <button type="button" onClick={() => toggle("chambres")} className={chip(Boolean(filters.bedrooms) || panel === "chambres")}>
-          {filters.bedrooms ? `${filters.bedrooms}+ ch.` : "Chambres"}
-        </button>
+        {spaces ? (
+          <button type="button" onClick={() => toggle("capacite")} className={chip(Boolean(filters.capacity) || panel === "capacite")}>
+            {filters.capacity ? `${filters.capacity}+ pers.` : "Capacité"}
+          </button>
+        ) : (
+          <button type="button" onClick={() => toggle("chambres")} className={chip(Boolean(filters.bedrooms) || panel === "chambres")}>
+            {filters.bedrooms ? `${filters.bedrooms}+ ch.` : "Chambres"}
+          </button>
+        )}
         <button type="button" onClick={() => toggle("type")} className={chip(Boolean(filters.type) || panel === "type")}>
-          {filters.type ? PROPERTY_TYPES[filters.type] : "Type de bien"}
+          {filters.type ? PROPERTY_TYPES[filters.type] : spaces ? "Type d'espace" : "Type de bien"}
+        </button>
+        <button type="button" onClick={() => toggle("equipements")} className={chip(amenities.length > 0 || panel === "equipements")}>
+          {amenities.length ? `Équipements (${amenities.length})` : "Équipements"}
         </button>
 
         {hasFilters && (
           <button
             type="button"
             onClick={() =>
-              apply({ q: undefined, transaction: undefined, type: undefined, minPrice: undefined, maxPrice: undefined, currency: undefined, bedrooms: undefined, bounds: undefined })
+              apply({ q: undefined, transaction: undefined, type: undefined, minPrice: undefined, maxPrice: undefined, currency: undefined, bedrooms: undefined, capacity: undefined, amenities: undefined, bounds: undefined })
             }
             className="shrink-0 px-2 text-sm font-medium text-navy-700 hover:underline"
           >
@@ -129,8 +181,29 @@ export function FilterBar({ filters, go }: { filters: SearchFilters; go: Go }) {
               <button type="button" onClick={() => apply({ type: undefined })} className={chip(!filters.type)}>
                 Tous
               </button>
-              {(Object.entries(PROPERTY_TYPES) as [PropertyType, string][]).map(([v, l]) => (
+              {typeChoices.map((v) => (
                 <button key={v} type="button" onClick={() => apply({ type: v })} className={chip(filters.type === v)}>
+                  {PROPERTY_TYPES[v]}
+                </button>
+              ))}
+            </div>
+          )}
+          {panel === "capacite" && (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => apply({ capacity: undefined })} className={chip(!filters.capacity)}>
+                Toutes
+              </button>
+              {CAPACITIES.map((n) => (
+                <button key={n} type="button" onClick={() => apply({ capacity: n })} className={chip(filters.capacity === n)}>
+                  {n}+ personnes
+                </button>
+              ))}
+            </div>
+          )}
+          {panel === "equipements" && (
+            <div className="flex flex-wrap gap-2">
+              {(Object.entries(AMENITIES) as [Amenity, string][]).map(([a, l]) => (
+                <button key={a} type="button" aria-pressed={amenities.includes(a)} onClick={() => toggleAmenity(a)} className={chip(amenities.includes(a))}>
                   {l}
                 </button>
               ))}

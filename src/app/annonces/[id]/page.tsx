@@ -8,7 +8,9 @@ import { PropertyMap } from "@/components/map";
 import { PropertyCard } from "@/components/property-card";
 import { VerifiedBadge } from "@/components/verified-badge";
 import {
+  AMENITIES,
   PROPERTY_TYPES,
+  isSpace,
   TRANSACTION_TYPES,
   approxOtherCurrency,
   coverPath,
@@ -51,8 +53,9 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
   const photos = [...p.property_media].sort((a, b) => a.position - b.position);
   const specs = [
     ["Type", PROPERTY_TYPES[p.property_type]],
+    ["Capacité", p.capacity ? `${p.capacity} personnes` : null],
     ["Chambres", p.bedrooms],
-    ["Salles de bain", p.bathrooms],
+    [isSpace(p.property_type) ? "Toilettes" : "Salles de bain", p.bathrooms],
     ["Surface", p.area_m2 ? `${p.area_m2} m²` : null],
   ].filter(([, v]) => v !== null && v !== undefined);
 
@@ -123,6 +126,22 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
             <section className="mt-8">
               <h2 className="text-lg font-bold text-navy-900">Description</h2>
               <p className="mt-2 whitespace-pre-line leading-relaxed text-ink/90">{p.description}</p>
+            </section>
+          )}
+
+          {p.amenities.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-lg font-bold text-navy-900">Équipements</h2>
+              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {p.amenities.map((a) => (
+                  <li key={a} className="flex items-center gap-2 text-sm text-ink">
+                    <svg viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-gold-600" aria-hidden>
+                      <path fillRule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.6l7.3-7.3a1 1 0 0 1 1.4 0Z" clipRule="evenodd" />
+                    </svg>
+                    {AMENITIES[a]}
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

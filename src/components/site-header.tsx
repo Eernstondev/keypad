@@ -19,6 +19,7 @@ export function SiteHeader() {
         <nav className="mr-auto hidden items-center gap-1 pl-6 text-sm font-medium md:flex">
           <Link href="/?transaction=location" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Louer</Link>
           <Link href="/?transaction=vente" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Acheter</Link>
+          <Link href="/?cat=espaces" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Espaces &amp; événements</Link>
           <Link href="/agents" className="rounded-lg px-3 py-2 text-ink hover:bg-sand-50">Agents</Link>
         </nav>
 

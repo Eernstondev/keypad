@@ -28,8 +28,9 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
     .filter((p) => p.lat !== null && p.lng !== null)
     .map((p) => ({ id: p.id, lat: p.lat!, lng: p.lng!, price: shortPrice(p), href: `/annonces/${p.id}` }));
 
+  const noun = filters.cat === "espaces" ? "espaces" : filters.cat === "logements" ? "logements" : "biens";
   const label =
-    filters.transaction === "location" ? "logements à louer" : filters.transaction === "vente" ? "biens à vendre" : "annonces";
+    filters.transaction === "location" ? `${noun} à louer` : filters.transaction === "vente" ? `${noun} à vendre` : "annonces";
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] flex-col">
@@ -43,6 +44,18 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
           }`}
         >
           <div className={`px-4 py-5 transition-opacity ${pending ? "opacity-50" : ""}`}>
+            {filters.cat === "espaces" && (
+              <div className="mb-5 rounded-2xl border border-gold-500/30 bg-gold-100/60 px-5 py-4">
+                <p className="font-bold text-navy-900">Espaces pro &amp; événements</p>
+                <p className="mt-1 text-sm text-ink/80">
+                  Salles de réception, bureaux et salles de réunion, locaux commerciaux, entrepôts. À l&apos;heure, à la
+                  journée ou au mois.
+                </p>
+                <Link href="/publier?type=espace_evenementiel" className="mt-2 inline-block text-sm font-semibold text-navy-700 underline">
+                  Vous avez un espace à louer ? Publiez-le
+                </Link>
+              </div>
+            )}
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted">
                 <span className="text-base font-bold text-navy-900">{total}</span> {label}

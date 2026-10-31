@@ -53,6 +53,7 @@ export function PropertyCard({ property: p }: { property: Property }) {
             {[
               PROPERTY_TYPES[p.property_type],
               p.bedrooms ? `${p.bedrooms} ch.` : null,
+              p.capacity ? `${p.capacity} pers.` : null,
               p.area_m2 ? `${p.area_m2} m²` : null,
             ]
               .filter(Boolean)

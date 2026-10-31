@@ -2,15 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PropertyMap } from "@/components/map";
 import { createClient } from "@/lib/supabase/client";
 import {
+  AMENITIES,
+  CATEGORIES,
   DEPARTMENTS,
   MEDIA_BUCKET,
+  PRICE_PERIODS,
   PROPERTY_TYPES,
+  isSpace,
   mediaUrl,
+  type PricePeriod,
   type Property,
+  type PropertyType,
   type TransactionType,
 } from "@/lib/listings";
 import { refreshListings } from "@/app/actions";
@@ -61,6 +67,12 @@ export function PublishForm({
   requireLocation?: boolean; // agents : position sur la carte obligatoire
 }) {
   const router = useRouter();
+  const typeParam = useSearchParams().get("type");
+  const [type, setType] = useState<PropertyType>(
+    initial?.property_type ?? (typeParam && typeParam in PROPERTY_TYPES ? (typeParam as PropertyType) : "maison"),
+  );
+  const space = isSpace(type);
+  const periods: PricePeriod[] = space ? ["heure", "jour", "mois", "annee"] : ["mois", "annee"];
   const [transaction, setTransaction] = useState<TransactionType>(initial?.transaction_type ?? "location");
   const [existing, setExisting] = useState(() =>
     [...(initial?.property_media ?? [])].sort((a, b) => a.position - b.position),
@@ -116,12 +128,14 @@ export function PublishForm({
     const fields = {
       title: String(form.get("title")).trim(),
       description: textOrNull(form.get("description")),
-      property_type: form.get("property_type"),
+      property_type: type,
       transaction_type: transaction,
       price: Number(form.get("price")),
       currency: form.get("currency"),
       price_period: transaction === "location" ? form.get("price_period") : null,
-      bedrooms: numberOrNull(form.get("bedrooms")),
+      bedrooms: space ? null : numberOrNull(form.get("bedrooms")),
+      capacity: space ? numberOrNull(form.get("capacity")) : null,
+      amenities: form.getAll("amenities").map(String),
       bathrooms: numberOrNull(form.get("bathrooms")),
       area_m2: numberOrNull(form.get("area_m2")),
       department: form.get("department"),
@@ -208,27 +222,42 @@ export function PublishForm({
 
         <Field label="Titre" htmlFor="title">
           <input id="title" name="title" required minLength={10} maxLength={120} className="field"
-            defaultValue={initial?.title} placeholder="Maison 3 chambres avec cour à Delmas 75" />
+            defaultValue={initial?.title}
+            placeholder={space ? "Salle de réception climatisée, 300 invités" : "Maison 3 chambres avec cour à Delmas 75"} />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Type de bien" htmlFor="property_type">
             <select id="property_type" name="property_type" required className="field"
-              defaultValue={initial?.property_type}>
-              {Object.entries(PROPERTY_TYPES).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
+              value={type} onChange={(e) => setType(e.target.value as PropertyType)}>
+              <optgroup label="Logements">
+                {[...CATEGORIES.logements.types, "terrain" as const].map((v) => (
+                  <option key={v} value={v}>{PROPERTY_TYPES[v]}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Espaces pro & événements">
+                {CATEGORIES.espaces.types.map((v) => (
+                  <option key={v} value={v}>{PROPERTY_TYPES[v]}</option>
+                ))}
+              </optgroup>
             </select>
           </Field>
           <Field label="Surface (m²)" htmlFor="area_m2">
             <input id="area_m2" name="area_m2" type="number" min={1} step="any" inputMode="decimal" className="field"
               defaultValue={initial?.area_m2 ?? undefined} />
           </Field>
-          <Field label="Chambres" htmlFor="bedrooms">
-            <input id="bedrooms" name="bedrooms" type="number" min={0} max={50} inputMode="numeric" className="field"
-              defaultValue={initial?.bedrooms ?? undefined} />
-          </Field>
-          <Field label="Salles de bain" htmlFor="bathrooms">
+          {space ? (
+            <Field label="Capacité (personnes)" htmlFor="capacity">
+              <input id="capacity" name="capacity" type="number" min={1} max={20000} inputMode="numeric" className="field"
+                defaultValue={initial?.capacity ?? undefined} placeholder="150" />
+            </Field>
+          ) : (
+            <Field label="Chambres" htmlFor="bedrooms">
+              <input id="bedrooms" name="bedrooms" type="number" min={0} max={50} inputMode="numeric" className="field"
+                defaultValue={initial?.bedrooms ?? undefined} />
+            </Field>
+          )}
+          <Field label={space ? "Toilettes" : "Salles de bain"} htmlFor="bathrooms">
             <input id="bathrooms" name="bathrooms" type="number" min={0} max={50} inputMode="numeric" className="field"
               defaultValue={initial?.bathrooms ?? undefined} />
           </Field>
@@ -237,8 +266,25 @@ export function PublishForm({
         <Field label="Description" htmlFor="description">
           <textarea id="description" name="description" rows={5} maxLength={4000} className="field"
             defaultValue={initial?.description ?? undefined}
-            placeholder="Eau, électricité, sécurité, accès à la route, état du bien…" />
+            placeholder={
+              space
+                ? "Usages possibles, horaires, mobilier fourni, traiteur, accès, conditions de réservation…"
+                : "Eau, électricité, sécurité, accès à la route, état du bien…"
+            } />
         </Field>
+
+        <fieldset>
+          <legend className="label">Équipements</legend>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {Object.entries(AMENITIES).map(([v, l]) => (
+              <label key={v} className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-white px-3 py-2 text-sm has-[:checked]:border-navy-700 has-[:checked]:bg-navy-100">
+                <input type="checkbox" name="amenities" value={v} defaultChecked={initial?.amenities?.includes(v as never)}
+                  className="accent-navy-900" />
+                {l}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </Section>
 
       <Section title="Prix">
@@ -255,10 +301,11 @@ export function PublishForm({
           </Field>
           {transaction === "location" && (
             <Field label="Période" htmlFor="price_period">
-              <select id="price_period" name="price_period" className="field"
-                defaultValue={initial?.price_period ?? undefined}>
-                <option value="annee">Par an</option>
-                <option value="mois">Par mois</option>
+              <select key={space ? "espace" : "logement"} id="price_period" name="price_period" className="field"
+                defaultValue={initial?.price_period && periods.includes(initial.price_period) ? initial.price_period : space ? "jour" : "annee"}>
+                {periods.map((v) => (
+                  <option key={v} value={v}>{PRICE_PERIODS[v]}</option>
+                ))}
               </select>
             </Field>
           )}
