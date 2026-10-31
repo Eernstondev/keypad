@@ -115,7 +115,7 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
         </section>
 
         {/* Carte : toujours montée (dimension correcte), recouverte par la liste sur mobile */}
-        <section className="absolute inset-0 lg:static lg:flex-1">
+        <section className={`absolute inset-0 lg:static lg:flex-1 ${view === "list" ? "max-lg:invisible" : ""}`}>
           <PropertyMap
             markers={markers}
             activeId={activeId}
