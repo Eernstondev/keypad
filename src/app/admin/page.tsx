@@ -61,9 +61,54 @@ async function AdminContent() {
   await connection();
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
+  const since30d = new Date(now - 30 * 86_400_000).toISOString();
+
+  // Chiffres clés (requêtes de comptage uniquement, aucune donnée transférée)
+  const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
+  const head = { count: "exact" as const, head: true };
+  const [online, closed30, newUsers30, visits30, pendingVisits, views] = await Promise.all([
+    count(supabase.from("properties").select("id", head).eq("status", "publie").eq("is_demo", false)),
+    count(supabase.from("properties").select("id", head).gte("closed_at", since30d)),
+    count(supabase.from("profiles").select("id", head).gte("created_at", since30d)),
+    count(supabase.from("visit_requests").select("id", head).gte("created_at", since30d)),
+    count(supabase.from("visit_requests").select("id", head).eq("status", "en_attente")),
+    supabase.from("properties").select("view_count, whatsapp_clicks").eq("status", "publie").then((r) => r.data ?? []),
+  ]);
+  const activeAgents = agents.filter((a) => new Date(a.active_until).getTime() > now).length;
+  const totalViews = views.reduce((n, v) => n + (v.view_count ?? 0), 0);
+  const totalClicks = views.reduce((n, v) => n + (v.whatsapp_clicks ?? 0), 0);
+
+  const kpis = [
+    { label: "Annonces en ligne", value: online },
+    { label: "Agents actifs", value: activeAgents },
+    { label: "Nouveaux comptes (30 j)", value: newUsers30 },
+    { label: "Demandes de visite (30 j)", value: visits30 },
+    { label: "Visites en attente", value: pendingVisits },
+    { label: "Vendus / loués (30 j)", value: closed30 },
+    { label: "Vues des annonces", value: totalViews },
+    { label: "Contacts WhatsApp", value: totalClicks },
+  ];
+  const numberFormat = new Intl.NumberFormat("fr-FR");
 
   return (
     <div className="mt-8 space-y-10">
+      <section>
+        <h2 className="text-lg font-bold text-navy-900">Tableau de bord</h2>
+        <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {kpis.map((k) => (
+            <div key={k.label} className="rounded-2xl border border-line bg-white p-4">
+              <dt className="text-xs text-muted">{k.label}</dt>
+              <dd className="mt-1 text-2xl font-extrabold text-navy-900">{numberFormat.format(k.value)}</dd>
+            </div>
+          ))}
+        </dl>
+        {reports.length > 0 && (
+          <p className="mt-3 rounded-xl bg-gold-100 px-4 py-2.5 text-sm text-ink">
+            {reports.length} signalement{reports.length > 1 ? "s" : ""} à traiter plus bas.
+          </p>
+        )}
+      </section>
+
       <section>
         <h2 className="text-lg font-bold text-navy-900">Agents immobiliers</h2>
         <p className="mt-1 text-sm text-muted">

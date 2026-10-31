@@ -10,7 +10,9 @@ import { VerifiedBadge } from "@/components/verified-badge";
 import {
   PROPERTY_TYPES,
   TRANSACTION_TYPES,
+  approxOtherCurrency,
   coverPath,
+  pricePerM2,
   formatPrice,
   locationLabel,
   mediaUrl,
@@ -128,8 +130,26 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
             <section className="mt-8">
               <h2 className="text-lg font-bold text-navy-900">Emplacement</h2>
               {p.address_hint && <p className="mt-1 text-sm text-muted">{p.address_hint}</p>}
-              <div className="mt-3 h-72 overflow-hidden rounded-2xl border border-line">
+              <div className="mt-3 h-80 overflow-hidden rounded-2xl border border-line">
                 <PropertyMap markers={[{ id: p.id, lat: p.lat, lng: p.lng }]} className="h-full w-full" />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost !py-2 text-sm"
+                >
+                  Itinéraire (Google Maps)
+                </a>
+                <a
+                  href={`https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost !py-2 text-sm"
+                >
+                  Ouvrir dans Waze
+                </a>
               </div>
             </section>
           )}
@@ -138,6 +158,10 @@ async function Listing({ params }: Pick<PageProps<"/annonces/[id]">, "params">) 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-line bg-white p-5">
             <p className="text-2xl font-extrabold text-navy-900">{formatPrice(p)}</p>
+            <p className="mt-0.5 text-sm text-muted">
+              {approxOtherCurrency(p)} <span className="text-xs">(taux indicatif)</span>
+            </p>
+            {pricePerM2(p) && <p className="mt-0.5 text-sm text-muted">{pricePerM2(p)}</p>}
             {p.is_demo ? (
               <p className="mt-4 rounded-xl bg-sand-100 px-5 py-3 text-center text-sm font-medium text-muted">
                 Annonce fictive, pas de contact

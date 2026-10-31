@@ -101,14 +101,6 @@ export function PublishForm({
     setRemoved((prev) => [...prev, path]);
   }
 
-  function locateMe() {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => setPicked({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => setError("Position indisponible. Placez le point sur la carte."),
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
-  }
-
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -297,25 +289,25 @@ export function PublishForm({
         </Field>
 
         <div id="emplacement">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="label !mb-0">
-              Position sur la carte{" "}
-              {requireLocation ? <span className="text-red-700">(obligatoire)</span> : "(recommandé)"}
-            </span>
-            <button type="button" onClick={locateMe} className="text-sm font-semibold text-navy-700">
-              Utiliser ma position
-            </button>
-          </div>
+          <p className="label">
+            Position sur la carte{" "}
+            {requireLocation ? <span className="text-red-700">(obligatoire)</span> : "(recommandé)"}
+          </p>
           <LocationSearch onSelect={(lat, lng) => setPicked({ lat, lng })} />
           <div
-            className={`h-72 overflow-hidden rounded-2xl border ${requireLocation && !picked && error ? "border-red-400" : "border-line"}`}
+            className={`h-80 overflow-hidden rounded-2xl border sm:h-96 ${requireLocation && !picked && error ? "border-red-400" : "border-line"}`}
           >
             <PropertyMap picked={picked} onPick={(lat, lng) => setPicked({ lat, lng })} className="h-full w-full" />
           </div>
           <p className="mt-2 text-xs text-muted">
-            {picked
-              ? "Point placé. Touchez la carte pour l'ajuster précisément sur le bien."
-              : "Cherchez le lieu ci-dessus ou touchez la carte pour placer le bien."}
+            {picked ? (
+              <>
+                Point placé ({picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}). Faites-le glisser ou touchez la carte
+                pour l&apos;ajuster. Passez en <strong>Satellite</strong> pour viser le toit de la maison.
+              </>
+            ) : (
+              <>Cherchez le lieu, utilisez le bouton « Ma position » sur la carte, ou touchez la carte.</>
+            )}
           </p>
         </div>
       </Section>

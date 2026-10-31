@@ -109,8 +109,10 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
             onMarkerHover={setActiveId}
             onBoundsChange={setMovedTo}
             bounds={filters.bounds}
+            wheelZoom
             className="h-full w-full"
           />
+          <AroundMe onFound={(bounds) => go({ bounds })} />
           {movedTo && (
             <button
               onClick={() => {
@@ -133,5 +135,45 @@ export function SearchView({ filters, items, total, pageSize }: Props) {
         </button>
       </div>
     </div>
+  );
+}
+
+// Recherche dans un rayon d'environ 3 km autour de la position de l'utilisateur
+function AroundMe({ onFound }: { onFound: (bounds: MapBounds) => void }) {
+  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
+
+  function locate() {
+    if (!navigator.geolocation) return setState("error");
+    setState("loading");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setState("idle");
+        const dLat = 0.027; // ≈ 3 km
+        const dLng = 0.028;
+        const r = (n: number) => Math.round(n * 1e4) / 1e4;
+        onFound({
+          n: r(coords.latitude + dLat),
+          s: r(coords.latitude - dLat),
+          e: r(coords.longitude + dLng),
+          w: r(coords.longitude - dLng),
+        });
+      },
+      () => setState("error"),
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={locate}
+      disabled={state === "loading"}
+      className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-navy-900 shadow-md ring-1 ring-black/5 hover:bg-sand-50"
+    >
+      <svg viewBox="0 0 20 20" fill="currentColor" className="size-3.5" aria-hidden>
+        <path d="M10 2a6 6 0 0 0-6 6c0 4.2 6 10 6 10s6-5.8 6-10a6 6 0 0 0-6-6Zm0 8.2A2.2 2.2 0 1 1 10 5.8a2.2 2.2 0 0 1 0 4.4Z" />
+      </svg>
+      {state === "loading" ? "Localisation…" : state === "error" ? "Position indisponible" : "Autour de moi"}
+    </button>
   );
 }

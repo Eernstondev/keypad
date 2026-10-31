@@ -128,6 +128,19 @@ export const USD_HTG = 131;
 
 const numberFormat = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
 
+// Équivalent indicatif dans l'autre devise : « ≈ 2 180 $ US » ou « ≈ 18 340 000 HTG »
+export function approxOtherCurrency(p: Pick<Property, "price" | "currency" | "price_period">) {
+  const other: Currency = p.currency === "USD" ? "HTG" : "USD";
+  const value = p.currency === "USD" ? p.price * USD_HTG : p.price / USD_HTG;
+  return `≈ ${formatPrice({ price: Math.round(value), currency: other, price_period: p.price_period })}`;
+}
+
+// Prix au m² pour les biens à vendre dont la surface est connue
+export function pricePerM2(p: Pick<Property, "price" | "currency" | "area_m2" | "transaction_type">) {
+  if (p.transaction_type !== "vente" || !p.area_m2) return null;
+  return `${formatPrice({ price: Math.round(p.price / p.area_m2), currency: p.currency, price_period: null })} / m²`;
+}
+
 export function formatPrice(p: Pick<Property, "price" | "currency" | "price_period">) {
   const amount = numberFormat.format(p.price);
   const value = p.currency === "USD" ? `${amount} $ US` : `${amount} HTG`;
